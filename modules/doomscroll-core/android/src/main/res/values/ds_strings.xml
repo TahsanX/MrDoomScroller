@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="ds_service_label">MrDoomScroller counter</string>
+  <string name="ds_service_summary">Counts the short videos you scroll past.</string>
+  <!--
+    This is the text shown in Android's own accessibility settings screen. It is the
+    only description of the service the user sees before granting, so it says exactly
+    what is read and what leaves the device, which is nothing.
+  -->
+  <string name="ds_service_description">MrDoomScroller watches scroll events in Instagram, YouTube, TikTok, Facebook and Snapchat so it can count how many short videos you swipe through. It reads the on-screen layout of those apps only to tell a short-video feed apart from the rest of the app. It never reads your messages, captions or account details, stores every count on this device only, and has no internet permission at all.</string>
+</resources>

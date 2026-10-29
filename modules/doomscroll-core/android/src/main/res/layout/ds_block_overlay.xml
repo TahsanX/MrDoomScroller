@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The limit panel. Says the number out loud, then offers a way out. No shaming copy:
+  a user who feels told off uninstalls the app and keeps the habit.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:background="#F2101014"
+  android:gravity="center"
+  android:orientation="vertical"
+  android:padding="32dp">
+
+  <TextView
+    android:id="@+id/ds_block_count"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:fontFamily="sans-serif-medium"
+    android:text="0"
+    android:textColor="#FFFFFF"
+    android:textSize="72sp" />
+
+  <TextView
+    android:id="@+id/ds_block_message"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="12dp"
+    android:gravity="center"
+    android:text=""
+    android:textColor="#D0FFFFFF"
+    android:textSize="16sp" />
+
+  <Button
+    android:id="@+id/ds_block_leave"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="28dp"
+    android:text="Close the app" />
+
+  <Button
+    android:id="@+id/ds_block_snooze"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="8dp"
+    android:text="One more minute"
+    android:visibility="gone" />
+
+  <Button
+    android:id="@+id/ds_block_dismiss"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="8dp"
+    android:background="@android:color/transparent"
+    android:text="Keep scrolling"
+    android:textColor="#80FFFFFF"
+    android:visibility="gone" />
+</LinearLayout>

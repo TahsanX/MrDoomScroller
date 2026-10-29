@@ -1,18 +1,30 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+import { Ink, Surface } from '@/constants/doomscroll-theme';
 
-SplashScreen.preventAutoHideAsync();
-
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+export default function RootLayout() {
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <>
+      <StatusBar style="light" />
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: Surface.page },
+          headerTintColor: Ink.primary,
+          headerTitleStyle: { fontSize: 16, fontWeight: '600' },
+          headerShadowVisible: false,
+          contentStyle: { backgroundColor: Surface.page },
+        }}>
+        <Stack.Screen name="index" options={{ title: 'MrDoomScroller' }} />
+        <Stack.Screen
+          name="onboarding"
+          options={{ title: 'Setup', headerBackVisible: false }}
+        />
+        <Stack.Screen name="limits" options={{ title: 'Limits' }} />
+        <Stack.Screen name="history" options={{ title: 'History' }} />
+        <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+        <Stack.Screen name="calibration" options={{ title: 'Calibration' }} />
+      </Stack>
+    </>
   );
 }

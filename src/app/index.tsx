@@ -1,98 +1,139 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useEffect } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BrainStateHero } from '@/components/brain-state';
+import { AppBreakdown, Card, HourHeatmap, WeekBars } from '@/components/charts';
+import { Body, Button, Panel, Screen, SectionTitle, UnsupportedNotice } from '@/components/ds-ui';
+import { Ink, Spacing } from '@/constants/doomscroll-theme';
+import {
+  formatDuration,
+  useInsights,
+  usePermissions,
+  useSettings,
+  useToday,
+  useWeek,
+} from '@/hooks/use-doomscroll';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+export default function Dashboard() {
+  const router = useRouter();
+  const { serviceEnabled, overlayGranted, isSupported } = usePermissions();
+  const { settings } = useSettings();
+  const { today } = useToday();
+  const week = useWeek();
+  const insights = useInsights(30);
+
+  // A user who has not finished setup has nothing to look at, so send them
+  // straight through rather than showing a dashboard of zeros.
+  useEffect(() => {
+    if (settings && !settings.onboardingComplete && isSupported) {
+      router.replace('/onboarding');
+    }
+  }, [settings, isSupported, router]);
+
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
+    <Screen>
+      <SafeAreaView edges={['bottom']} style={styles.safe}>
+        <ScrollView contentContainerStyle={styles.content}>
+          {!isSupported ? <UnsupportedNotice /> : null}
+
+          {isSupported && !serviceEnabled ? (
+            <Panel>
+              <SectionTitle>Counting is off</SectionTitle>
+              <Body muted>
+                The accessibility service is not enabled, so nothing is being counted
+                right now.
+              </Body>
+              <Button label="Turn counting on" onPress={() => router.push('/onboarding')} />
+            </Panel>
+          ) : null}
+
+          <BrainStateHero
+            total={today?.total ?? 0}
+            state={today?.brainState ?? 'healthy'}
+            caption="Brain state is this app's own scale, set by the thresholds in Settings. It is not a medical measure."
+          />
+
+          <Card title="Today" subtitle="Watch time and pace">
+            <View style={styles.statRow}>
+              <Stat label="Watch time" value={formatDuration(today?.feedMs ?? 0)} />
+              <Stat
+                label="Average per reel"
+                value={
+                  today && today.total > 0
+                    ? `${Math.round(today.feedMs / today.total / 1000)}s`
+                    : '—'
+                }
+              />
+              <Stat
+                label="Limit"
+                value={settings?.dailyLimit ? `${settings.dailyLimit}` : 'none'}
+              />
+            </View>
+          </Card>
+
+          <AppBreakdown apps={today?.apps ?? []} />
+          <WeekBars days={week.days} />
+          <HourHeatmap hours={insights.hours} />
+
+          {!overlayGranted && isSupported ? (
+            <Panel>
+              <SectionTitle>Floating counter is off</SectionTitle>
+              <Body muted>
+                Without the draw-over-apps permission the count still works, but you
+                will only see it in here.
+              </Body>
+              <Button
+                label="Fix in Settings"
+                variant="secondary"
+                onPress={() => router.push('/settings')}
+              />
+            </Panel>
+          ) : null}
+
+          <View style={styles.navRow}>
+            <Button label="Limits" variant="secondary" onPress={() => router.push('/limits')} />
+            <Button label="History" variant="secondary" onPress={() => router.push('/history')} />
+            <Button
+              label="Settings"
+              variant="secondary"
+              onPress={() => router.push('/settings')}
+            />
+          </View>
+
+          <Text style={styles.footer}>
+            Everything on this screen is stored on this phone only. The app has no
+            internet permission.
+          </Text>
+        </ScrollView>
+      </SafeAreaView>
+    </Screen>
   );
 }
 
-export default function HomeScreen() {
+function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+    <View style={styles.stat}>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
+  safe: { flex: 1 },
+  content: { padding: Spacing.lg, paddingBottom: Spacing.xxl },
+  statRow: { flexDirection: 'row', gap: Spacing.lg },
+  stat: { flex: 1 },
+  statValue: { color: Ink.primary, fontSize: 20, fontWeight: '600' },
+  statLabel: { color: Ink.muted, fontSize: 11, marginTop: 2 },
+  navRow: { gap: Spacing.sm },
+  footer: {
+    color: Ink.muted,
+    fontSize: 11,
     textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+    marginTop: Spacing.xl,
+    lineHeight: 16,
   },
 });

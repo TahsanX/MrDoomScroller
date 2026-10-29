@@ -1,0 +1,49 @@
+// KSP (for Room's compiler) follows the Kotlin version that Expo's root project pins.
+// Same pattern expo-image uses, so it stays in step with the SDK.
+buildscript {
+  dependencies {
+    classpath "com.google.devtools.ksp:symbol-processing-gradle-plugin:${rootProject["kspVersion"]}"
+  }
+}
+
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+apply plugin: 'com.google.devtools.ksp'
+
+group = 'com.mrdoomscroller.core'
+version = '1.0.0'
+
+android {
+  namespace "com.mrdoomscroller.core"
+  defaultConfig {
+    // The overlay window type and the per-package accessibility scoping both
+    // behave predictably from Oreo up; below that they do not.
+    minSdkVersion 26
+    consumerProguardFiles("proguard-rules.pro")
+  }
+}
+
+// Room writes its generated DAOs into a schema dir for migration diffing.
+ksp {
+  arg("room.schemaLocation", "$projectDir/schemas".toString())
+  arg("room.generateKotlin", "true")
+}
+
+dependencies {
+  def roomVersion = "2.6.1"
+
+  implementation "androidx.core:core-ktx:1.13.1"
+  implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1"
+
+  implementation "androidx.room:room-runtime:$roomVersion"
+  implementation "androidx.room:room-ktx:$roomVersion"
+  ksp "androidx.room:room-compiler:$roomVersion"
+
+  implementation "androidx.work:work-runtime-ktx:2.9.1"
+
+  testImplementation "junit:junit:4.13.2"
+  testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1"
+}
