@@ -3,46 +3,58 @@ package com.mrdoomscroller.core.service
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Rect
 import android.os.Build
-import android.util.DisplayMetrics
+import android.os.Handler
+import android.os.HandlerThread
+import android.os.SystemClock
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import androidx.core.content.ContextCompat
 import com.mrdoomscroller.core.CounterBus
 import com.mrdoomscroller.core.db.Repository
+import com.mrdoomscroller.core.detect.DetectionProfile
 import com.mrdoomscroller.core.detect.DetectorEvent
+import com.mrdoomscroller.core.detect.PageObservation
 import com.mrdoomscroller.core.detect.Profiles
-import com.mrdoomscroller.core.detect.ReelDetector
-import com.mrdoomscroller.core.detect.ScrollSignal
+import com.mrdoomscroller.core.detect.ReelCounter
 import com.mrdoomscroller.core.detect.TargetApp
-import com.mrdoomscroller.core.detect.WindowSignal
 import com.mrdoomscroller.core.enforce.LimitEnforcer
 import com.mrdoomscroller.core.overlay.OverlayController
 import com.mrdoomscroller.core.widget.CounterWidgetProvider
 import com.mrdoomscroller.core.work.MaintenanceWorker
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 /**
- * The observer. Watches scroll and window events in the five target apps, hands them
- * to [ReelDetector], and persists whatever it concludes.
+ * The observer. Turns accessibility events into "look at the screen now" moments,
+ * hands what it sees to [ReelCounter], and persists whatever that concludes.
+ *
+ * ## Events are triggers, not evidence
+ *
+ * The first version tried to count from the scroll events themselves and scored
+ * under 30% on a real device. Events are now only used to decide *when* to look:
+ *
+ * - a scroll schedules a probe for once the swipe has settled,
+ * - a window change schedules one for once the new screen has drawn,
+ * - and while a target app is in front, a slow poll catches what sends no event at
+ *   all — Instagram switching tabs, or the user leaving for the launcher, which this
+ *   service never hears about because it only listens to the five target packages.
+ *
+ * Each probe reads the screen with [PagerProbe] and [ReelCounter] decides.
  *
  * ## Threading
  *
- * [onAccessibilityEvent] runs on the main thread and is called while the user's thumb
- * is moving. Anything slow here is felt directly as jank in Instagram, so this method
- * only ever reads event fields, does a bounded node walk, and hands off. Every write
- * goes to [writeScope], a single-threaded dispatcher: it keeps Room off the main
- * thread while still serialising commits so the read-modify-write in
- * `StatsDao.commitReel` cannot interleave with itself.
- *
- * The React Native JS context is deliberately not in this path. It may not exist —
- * the service runs with the app closed, which is the normal case — and crossing the
- * bridge per swipe would be both slow and unreliable.
+ * Probes and the counter live on [probeThread], so the bounded node walk never
+ * competes with the overlay on the main thread and the counter needs no locking.
+ * Writes go to [writeScope], single-threaded so the read-modify-write in
+ * `StatsDao.commitReel` cannot interleave with itself. The React Native JS context
+ * is never in this path; it is usually not running at all.
  */
 class ScrollWatchService : AccessibilityService() {
 
@@ -51,47 +63,82 @@ class ScrollWatchService : AccessibilityService() {
     SupervisorJob() + Dispatchers.IO.limitedParallelism(1)
   )
 
+  private lateinit var probeThread: HandlerThread
+  private lateinit var probeHandler: Handler
+
   private lateinit var repository: Repository
-  private lateinit var detector: ReelDetector
+  private lateinit var profiles: Map<String, DetectionProfile>
   private lateinit var overlay: OverlayController
   private lateinit var enforcer: LimitEnforcer
 
+  /** Only touched on [probeThread]. */
+  private val counter = ReelCounter()
+
   private var screenOffReceiver: ScreenOffReceiver? = null
 
-  /**
-   * Cached so the hot path never touches the database. Updated on every commit and
-   * re-read when the service connects.
-   */
+  /** Cached so the overlay never waits on the database. */
   @Volatile
   private var todayTotal: Int = 0
 
   @Volatile
   private var debugLogging: Boolean = false
 
+  // Probe-thread state.
+  private var scrolledSinceProbe = false
+  private var anyScrollSinceProbe = false
+  private var targetInFront = false
+  private var lastProbeAt = 0L
+
+  /**
+   * A settle probe is waiting. The poll stays out of the way meanwhile: a poll landing
+   * mid-swipe would consume the scroll flags while the old reel is still on screen,
+   * and the settle probe would then see the new reel with no scroll behind it.
+   */
+  private var settlePending = false
+
   /**
    * Reels in the current sitting. A sitting ends after `LimitEnforcer.SESSION_GAP_MS`
-   * away from any feed, which is tracked here rather than in the detector because it
-   * is an enforcement concept, not a detection one.
+   * away from any feed — an enforcement concept, so it lives here, not in the counter.
    */
   private var sessionCount: Int = 0
   private var lastReelAt: Long = 0
 
+  private val probeRunnable = Runnable {
+    settlePending = false
+    runProbe()
+  }
+
+  private val pollRunnable = object : Runnable {
+    override fun run() {
+      if (!targetInFront) return
+      // A scroll-triggered probe may have just run, or be about to; no need to repeat it.
+      if (!settlePending && SystemClock.uptimeMillis() - lastProbeAt >= POLL_MS - 100) runProbe()
+      if (targetInFront) probeHandler.postDelayed(this, POLL_MS)
+    }
+  }
+
   override fun onServiceConnected() {
     super.onServiceConnected()
     repository = Repository.get(this)
-    detector = ReelDetector(Profiles.load(this))
+    profiles = Profiles.load(this)
     enforcer = LimitEnforcer(this)
-    overlay = OverlayController(this) { x, y ->
-      // The drag happens on the main thread; the write belongs on ours.
-      writeScope.launch {
-        repository.putSettings(repository.settings().copy(overlayX = x, overlayY = y))
+    overlay = OverlayController(
+      context = this,
+      onPositionChanged = { x, y ->
+        writeScope.launch {
+          repository.putSettings(repository.settings().copy(overlayX = x, overlayY = y))
+        }
       }
-    }
+    )
 
-    // ContextCompat with an explicit flag rather than bare registerReceiver: apps
-    // targeting Android 14+ must declare export intent, and relying on the
-    // system-broadcast exemption is not worth a SecurityException at runtime.
-    screenOffReceiver = ScreenOffReceiver { onSessionInterrupted() }.also {
+    probeThread = HandlerThread("DoomScroll-probe").also { it.start() }
+    probeHandler = Handler(probeThread.looper)
+
+    // Explicit export flag: apps targeting Android 14+ must declare it, and relying
+    // on the system-broadcast exemption is not worth a SecurityException.
+    screenOffReceiver = ScreenOffReceiver {
+      probeHandler.post { endSitting() }
+    }.also {
       ContextCompat.registerReceiver(
         this,
         it,
@@ -114,125 +161,180 @@ class ScrollWatchService : AccessibilityService() {
 
   override fun onAccessibilityEvent(event: AccessibilityEvent?) {
     if (event == null) return
-    val app = TargetApp.forPackage(event.packageName?.toString())
+    val pkg = event.packageName?.toString() ?: return
+    // Our own windows (the limit panel) must never count as leaving the feed.
+    if (pkg == packageName) return
+    val app = TargetApp.forPackage(pkg) ?: return
 
     when (event.eventType) {
-      AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> handleWindow(event, app)
-      AccessibilityEvent.TYPE_VIEW_SCROLLED -> handleScroll(event, app)
+      AccessibilityEvent.TYPE_VIEW_SCROLLED -> {
+        val vertical = isFeedSizedVerticalScroll(event)
+        probeHandler.post {
+          anyScrollSinceProbe = true
+          if (vertical) scrolledSinceProbe = true
+          scheduleProbe(SCROLL_SETTLE_MS)
+          startPolling()
+        }
+      }
+
+      AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> probeHandler.post {
+        scheduleProbe(WINDOW_SETTLE_MS)
+        startPolling()
+      }
+
       else -> Unit
     }
+
+    if (debugLogging) Log.d(TAG, "event ${AccessibilityEvent.eventTypeToString(event.eventType)} app=${app.id}")
   }
 
-  private fun handleWindow(event: AccessibilityEvent, app: TargetApp?) {
-    val source = event.source
-    try {
-      val profile = app?.let { detector.profileFor(it) }
-      val hasActionColumn = if (profile != null) {
-        NodeScanner.hasActionColumn(source, profile)
-      } else {
-        false
-      }
-
-      val signal = WindowSignal(
-        timestamp = System.currentTimeMillis(),
-        app = app,
-        packageName = event.packageName?.toString(),
-        className = event.className?.toString(),
-        viewIdResourceName = source?.viewIdResourceName,
-        hasActionColumn = hasActionColumn
-      )
-
-      if (debugLogging) {
-        Log.d(TAG, "window pkg=${signal.packageName} cls=${signal.className} id=${signal.viewIdResourceName} actions=$hasActionColumn")
-      }
-
-      dispatch(detector.onWindow(signal))
+  /**
+   * Only scrolls of something feed-sized and not clearly horizontal count as "the
+   * user swiped". Used solely by the counter's fallback for pages with no readable
+   * labels; the fingerprint path does not need it.
+   */
+  private fun isFeedSizedVerticalScroll(event: AccessibilityEvent): Boolean {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+      val dx = event.scrollDeltaX
+      val dy = event.scrollDeltaY
+      if (dx != 0 && abs(dx) > abs(dy)) return false
+    }
+    val source = event.source ?: return true
+    return try {
+      val rect = Rect()
+      source.getBoundsInScreen(rect)
+      rect.height() >= resources.displayMetrics.heightPixels * 0.6f
     } finally {
       @Suppress("DEPRECATION")
-      source?.recycle()
+      runCatching { source.recycle() }
     }
   }
 
-  private fun handleScroll(event: AccessibilityEvent, app: TargetApp?) {
-    if (app == null) return
-    // Cheap rejection before any node work: if we are not on a recognised feed
-    // surface there is nothing to count, and almost all scroll events in these apps
-    // are not on one.
-    if (!detector.isOnSurface) return
+  // ---- Probe thread ----------------------------------------------------------
 
-    val source = event.source
+  private fun scheduleProbe(delayMs: Long) {
+    // Each new event pushes the probe back, so a swipe is looked at once, after it
+    // has settled, not once per animation frame.
+    probeHandler.removeCallbacks(probeRunnable)
+    settlePending = true
+    probeHandler.postDelayed(probeRunnable, delayMs)
+  }
+
+  private fun startPolling() {
+    if (targetInFront) return
+    targetInFront = true
+    probeHandler.removeCallbacks(pollRunnable)
+    probeHandler.postDelayed(pollRunnable, POLL_MS)
+  }
+
+  private fun stopPolling() {
+    targetInFront = false
+    probeHandler.removeCallbacks(pollRunnable)
+  }
+
+  private fun runProbe() {
+    lastProbeAt = SystemClock.uptimeMillis()
+    val now = System.currentTimeMillis()
+    val root = runCatching { rootInActiveWindow }.getOrNull()
     try {
-      val profile = detector.profileFor(app)
-      val bounds = NodeScanner.boundsOf(source)
-      val metrics: DisplayMetrics = resources.displayMetrics
+      val pkg = root?.packageName?.toString()
+      // Our own limit panel is in front: nothing has changed about the feed.
+      if (pkg == packageName) return
 
-      val signal = ScrollSignal(
-        timestamp = System.currentTimeMillis(),
+      val app = TargetApp.forPackage(pkg)
+      if (app == null) {
+        // The launcher, another app, or a window we may not read. Either way the
+        // user is no longer in a feed we count.
+        stopPolling()
+        scrolledSinceProbe = false
+        anyScrollSinceProbe = false
+        dispatch(counter.onObservation(PageObservation(now, null, false, null, false)))
+        return
+      }
+
+      val metrics = resources.displayMetrics
+      val profile = profiles[app.id] ?: DetectionProfile.defaultFor(app.id)
+      val result = PagerProbe.probe(root, app.packages, profile, metrics.widthPixels, metrics.heightPixels)
+
+      if (result.paused) {
+        // Comment sheet, share sheet or snackbar over the reel. Nothing about the reel
+        // changes, and scrolling the comments must not read as a swipe afterwards.
+        scrolledSinceProbe = false
+        anyScrollSinceProbe = false
+        if (debugLogging) Log.d(TAG, "probe app=${app.id} paused")
+        return
+      }
+
+      val observation = PageObservation(
+        timestamp = now,
         app = app,
-        sourceClassName = event.className?.toString(),
-        viewIdResourceName = source?.viewIdResourceName,
-        fromIndex = event.fromIndex,
-        toIndex = event.toIndex,
-        itemCount = event.itemCount,
-        // Deltas arrived in API 28. Below that the detector falls through to its
-        // index tier, or to the de-bounced fallback.
-        scrollDeltaX = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) event.scrollDeltaX else 0,
-        scrollDeltaY = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) event.scrollDeltaY else 0,
-        sourceHeightPx = bounds.height(),
-        sourceWidthPx = bounds.width(),
-        screenHeightPx = metrics.heightPixels,
-        screenWidthPx = metrics.widthPixels,
-        hasActionColumn = NodeScanner.hasActionColumn(source, profile)
+        onShortForm = result.onShortForm,
+        fingerprint = result.fingerprint,
+        scrolledSinceLast = scrolledSinceProbe,
+        anyScrollSinceLast = anyScrollSinceProbe,
+        isAd = result.isAd
       )
+      scrolledSinceProbe = false
+      anyScrollSinceProbe = false
 
       if (debugLogging) {
+        // Reason and a fingerprint prefix only. Never the labels themselves.
         Log.d(
           TAG,
-          "scroll pkg=${app.id} cls=${signal.sourceClassName} idx=${signal.fromIndex}..${signal.toIndex}/${signal.itemCount} " +
-            "d=(${signal.scrollDeltaX},${signal.scrollDeltaY}) h=${signal.heightRatio} actions=${signal.hasActionColumn}"
+          "probe app=${app.id} short=${result.onShortForm} fp=${result.fingerprint?.take(6)} " +
+            "scrolled=${observation.scrolledSinceLast} ${result.reason}"
         )
       }
 
-      dispatch(detector.onScroll(signal))
+      dispatch(counter.onObservation(observation))
+    } catch (error: RuntimeException) {
+      // A window torn down mid-walk throws from deep inside the framework. Losing one
+      // probe is fine; losing the service is not.
+      Log.w(TAG, "Probe failed", error)
     } finally {
       @Suppress("DEPRECATION")
-      source?.recycle()
+      runCatching { root?.recycle() }
     }
   }
 
+  private fun endSitting() {
+    stopPolling()
+    probeHandler.removeCallbacks(probeRunnable)
+    settlePending = false
+    dispatch(counter.onSessionEnd(System.currentTimeMillis()))
+  }
+
   private fun dispatch(events: List<DetectorEvent>) {
-    if (events.isEmpty()) return
     for (event in events) {
       when (event) {
         is DetectorEvent.SurfaceEntered -> {
           overlay.show(todayTotal)
-          // Re-opening a feed after already passing the cap has to be caught here:
-          // in hard mode the user never gets as far as another swipe.
+          // In hard mode, re-opening a feed after the cap must be caught here: the
+          // user never gets as far as another swipe.
           writeScope.launch {
-            enforcer.onSurfaceEntered(
-              this@ScrollWatchService,
-              repository.settings(),
-              todayTotal,
-              event.app
-            )
+            enforcer.onSurfaceEntered(this@ScrollWatchService, repository.settings(), todayTotal, event.app)
           }
         }
 
         is DetectorEvent.SurfaceExited -> {
-          overlay.hide()
+          overlay.onSurfaceExited()
           enforcer.dismiss()
         }
 
         is DetectorEvent.ReelViewed -> onReelViewed(event)
+
+        is DetectorEvent.FinalDwell -> writeScope.launch {
+          repository.addFeedTime(event.timestamp, event.dwellMs)
+        }
       }
     }
   }
 
   private fun onReelViewed(event: DetectorEvent.ReelViewed) {
-    // A long enough gap means this is a new sitting.
     if (event.timestamp - lastReelAt > LimitEnforcer.SESSION_GAP_MS) sessionCount = 0
     lastReelAt = event.timestamp
     sessionCount += 1
+    val sitting = sessionCount
 
     // Optimistic bump so the overlay tracks the thumb rather than the disk. The
     // authoritative value comes back from the commit a moment later.
@@ -240,11 +342,11 @@ class ScrollWatchService : AccessibilityService() {
     overlay.update(todayTotal)
 
     writeScope.launch {
-      val committed = repository.commitReel(event.app, event.timestamp, event.dwellMs)
+      val committed = repository.commitReel(event.app, event.timestamp, event.dwellMs, event.isAd)
       if (committed == null) {
-        // The app was switched off in settings between the detection and the write.
+        // The app was switched off in settings between detection and write.
         todayTotal -= 1
-        sessionCount -= 1
+        probeHandler.post { sessionCount -= 1 }
         overlay.update(todayTotal)
         return@launch
       }
@@ -252,43 +354,51 @@ class ScrollWatchService : AccessibilityService() {
       overlay.update(committed)
       CounterWidgetProvider.requestUpdate(this@ScrollWatchService, committed)
 
-      // Only costs anything when the app is actually open and listening.
-      if (CounterBus.hasListeners) {
-        CounterBus.publishReel(event.app, committed, event.dwellMs)
-      }
+      if (CounterBus.hasListeners) CounterBus.publishReel(event.app, committed, event.dwellMs, event.isAd)
 
       val settings = repository.settings()
       debugLogging = settings.debugLogging
       if (settings.dailyLimit in 1..committed) {
         CounterBus.publishLimit(event.app, committed, settings.dailyLimit)
       }
-      enforcer.onCount(this@ScrollWatchService, settings, committed, sessionCount, event.app)
+      enforcer.onCount(this@ScrollWatchService, settings, committed, sitting, event.app)
     }
   }
 
-  private fun onSessionInterrupted() {
-    dispatch(detector.onSessionEnd(System.currentTimeMillis()))
-  }
+  // ---- Lifecycle -------------------------------------------------------------
 
   override fun onInterrupt() {
-    onSessionInterrupted()
+    if (::probeHandler.isInitialized) probeHandler.post { endSitting() }
   }
 
   override fun onUnbind(intent: Intent?): Boolean {
-    onSessionInterrupted()
-    overlay.hide()
+    if (::probeHandler.isInitialized) probeHandler.post { endSitting() }
+    if (::overlay.isInitialized) overlay.onSurfaceExited()
     return super.onUnbind(intent)
   }
 
   override fun onDestroy() {
     screenOffReceiver?.let { runCatching { unregisterReceiver(it) } }
     screenOffReceiver = null
-    overlay.destroy()
+    if (::overlay.isInitialized) overlay.destroy()
+    if (::probeThread.isInitialized) probeThread.quitSafely()
     writeScope.cancel()
     super.onDestroy()
   }
 
   companion object {
     const val TAG = "DoomScroll/Service"
+
+    /** After the last scroll event; long enough for a reel swipe to snap into place. */
+    private const val SCROLL_SETTLE_MS = 350L
+
+    /** After a window change; long enough for the new screen to lay out. */
+    private const val WINDOW_SETTLE_MS = 500L
+
+    /**
+     * While a target app is in front. Catches tab switches and leaving the app, which
+     * send this service no event. Slow enough that the bounded walk costs little.
+     */
+    private const val POLL_MS = 1200L
   }
 }

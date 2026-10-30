@@ -1,5 +1,6 @@
 package com.mrdoomscroller.core.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -13,7 +14,10 @@ data class DailyStats(
   @PrimaryKey val date: String,
   val totalReels: Int = 0,
   /** Milliseconds of attributed dwell time, summed over counted reels. */
-  val feedMs: Long = 0
+  val feedMs: Long = 0,
+  /** How many of [totalReels] were ads. Added in schema version 2. */
+  @ColumnInfo(defaultValue = "0")
+  val adReels: Int = 0
 )
 
 /**
@@ -39,7 +43,10 @@ data class ReelEvent(
   val timestamp: Long,
   val appId: String,
   /** How long this reel was on screen before the user moved on. */
-  val dwellMs: Int
+  val dwellMs: Int,
+  /** Sponsored. Added in schema version 2. */
+  @ColumnInfo(defaultValue = "0")
+  val isAd: Boolean = false
 )
 
 enum class BlockMode {

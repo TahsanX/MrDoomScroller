@@ -88,6 +88,7 @@ class DoomScrollCoreModule : Module() {
           "date" to today.date,
           "total" to today.totalReels,
           "feedMs" to today.feedMs,
+          "adReels" to today.adReels,
           "brainState" to brainStateFor(today.totalReels, settings),
           "apps" to apps.map { mapOf("appId" to it.appId, "count" to it.count) }
         )
@@ -100,7 +101,12 @@ class DoomScrollCoreModule : Module() {
         val apps = repository.appCountsInRange(from, to)
         mapOf(
           "days" to days.map {
-            mapOf("date" to it.date, "total" to it.totalReels, "feedMs" to it.feedMs)
+            mapOf(
+              "date" to it.date,
+              "total" to it.totalReels,
+              "feedMs" to it.feedMs,
+              "adReels" to it.adReels
+            )
           },
           "apps" to apps.map { mapOf("appId" to it.appId, "count" to it.count) }
         )
@@ -178,13 +184,23 @@ class DoomScrollCoreModule : Module() {
           "exportedAt" to System.currentTimeMillis(),
           "settings" to bundle.settings.toJs(),
           "days" to bundle.days.map {
-            mapOf("date" to it.date, "total" to it.totalReels, "feedMs" to it.feedMs)
+            mapOf(
+              "date" to it.date,
+              "total" to it.totalReels,
+              "feedMs" to it.feedMs,
+              "adReels" to it.adReels
+            )
           },
           "appStats" to bundle.appStats.map {
             mapOf("date" to it.date, "appId" to it.appId, "count" to it.count)
           },
           "events" to bundle.events.map {
-            mapOf("timestamp" to it.timestamp, "appId" to it.appId, "dwellMs" to it.dwellMs)
+            mapOf(
+              "timestamp" to it.timestamp,
+              "appId" to it.appId,
+              "dwellMs" to it.dwellMs,
+              "isAd" to it.isAd
+            )
           }
         )
       }
@@ -209,10 +225,10 @@ class DoomScrollCoreModule : Module() {
     }
   }
 
-  private val reelListener = CounterBus.Listener { appId, total, dwellMs ->
+  private val reelListener = CounterBus.Listener { appId, total, dwellMs, isAd ->
     sendEvent(
       ON_REEL_COUNTED,
-      bundleOf("appId" to appId, "total" to total, "dwellMs" to dwellMs)
+      bundleOf("appId" to appId, "total" to total, "dwellMs" to dwellMs, "isAd" to isAd)
     )
   }
 

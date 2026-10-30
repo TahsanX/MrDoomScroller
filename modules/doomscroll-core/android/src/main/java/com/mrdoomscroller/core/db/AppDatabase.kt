@@ -4,10 +4,12 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
   entities = [DailyStats::class, DailyAppStats::class, ReelEvent::class, AppSettings::class],
-  version = 1,
+  version = 2,
   exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -16,6 +18,17 @@ abstract class AppDatabase : RoomDatabase() {
 
   companion object {
     private const val NAME = "doomscroll.db"
+
+    /**
+     * Version 2 tags ads. Additive only, so existing counts survive the upgrade: a
+     * user who has been counting for weeks must not lose that history to an update.
+     */
+    val MIGRATION_1_2 = object : Migration(1, 2) {
+      override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE daily_stats ADD COLUMN adReels INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE reel_events ADD COLUMN isAd INTEGER NOT NULL DEFAULT 0")
+      }
+    }
 
     @Volatile
     private var instance: AppDatabase? = null
@@ -31,7 +44,10 @@ abstract class AppDatabase : RoomDatabase() {
           context.applicationContext,
           AppDatabase::class.java,
           NAME
-        ).build().also { instance = it }
+        )
+          .addMigrations(MIGRATION_1_2)
+          .build()
+          .also { instance = it }
       }
   }
 }

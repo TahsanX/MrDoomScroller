@@ -66,10 +66,7 @@ export default function Dashboard() {
                     : '—'
                 }
               />
-              <Stat
-                label="Limit"
-                value={settings?.dailyLimit ? `${settings.dailyLimit}` : 'none'}
-              />
+              <Stat label="Of which ads" value={`${today?.adReels ?? 0}`} />
             </View>
           </Card>
 

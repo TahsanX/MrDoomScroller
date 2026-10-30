@@ -9,7 +9,7 @@ import androidx.room.Upsert
 
 data class AppCount(val appId: String, val count: Int)
 
-data class DayTotal(val date: String, val totalReels: Int, val feedMs: Long)
+data class DayTotal(val date: String, val totalReels: Int, val feedMs: Long, val adReels: Int)
 
 data class HourBucket(val hour: Int, val count: Int)
 
@@ -23,10 +23,10 @@ abstract class StatsDao {
   @Query("SELECT * FROM daily_stats WHERE date = :date")
   abstract suspend fun dayOrNull(date: String): DailyStats?
 
-  @Query("SELECT date, totalReels, feedMs FROM daily_stats WHERE date BETWEEN :from AND :to ORDER BY date")
+  @Query("SELECT date, totalReels, feedMs, adReels FROM daily_stats WHERE date BETWEEN :from AND :to ORDER BY date")
   abstract suspend fun range(from: String, to: String): List<DayTotal>
 
-  @Query("SELECT date, totalReels, feedMs FROM daily_stats ORDER BY date DESC")
+  @Query("SELECT date, totalReels, feedMs, adReels FROM daily_stats ORDER BY date DESC")
   abstract suspend fun allDays(): List<DayTotal>
 
   @Query("SELECT appId, count FROM daily_app_stats WHERE date = :date ORDER BY count DESC")
@@ -97,21 +97,38 @@ abstract class StatsDao {
    * @return the new running total for [date], so callers need no second read.
    */
   @Transaction
-  open suspend fun commitReel(date: String, appId: String, timestamp: Long, dwellMs: Int): Int {
+  open suspend fun commitReel(
+    date: String,
+    appId: String,
+    timestamp: Long,
+    dwellMs: Int,
+    isAd: Boolean
+  ): Int {
     val day = dayOrNull(date)
     val newTotal = (day?.totalReels ?: 0) + 1
     upsertDay(
       DailyStats(
         date = date,
         totalReels = newTotal,
-        feedMs = (day?.feedMs ?: 0L) + dwellMs.toLong()
+        feedMs = (day?.feedMs ?: 0L) + dwellMs.toLong(),
+        adReels = (day?.adReels ?: 0) + if (isAd) 1 else 0
       )
     )
     upsertAppStats(
       DailyAppStats(date = date, appId = appId, count = (appCountOrNull(date, appId) ?: 0) + 1)
     )
-    insertEvent(ReelEvent(timestamp = timestamp, appId = appId, dwellMs = dwellMs))
+    insertEvent(ReelEvent(timestamp = timestamp, appId = appId, dwellMs = dwellMs, isAd = isAd))
     return newTotal
+  }
+
+  /**
+   * Watch time for the last reel of a sitting, which is only known once the user
+   * leaves. Adds to the day without counting a reel.
+   */
+  @Transaction
+  open suspend fun addFeedTime(date: String, dwellMs: Long) {
+    val day = dayOrNull(date) ?: return
+    upsertDay(day.copy(feedMs = day.feedMs + dwellMs))
   }
 
   @Transaction

@@ -30,10 +30,15 @@ class Repository(context: Context) {
    * Returns null when the app is switched off in settings — checked here rather than
    * in the detector so the detector stays a pure function of the event stream.
    */
-  suspend fun commitReel(app: TargetApp, timestamp: Long, dwellMs: Int): Int? {
+  suspend fun commitReel(app: TargetApp, timestamp: Long, dwellMs: Int, isAd: Boolean): Int? {
     val settings = settings()
     if (!settings.enabledApps.split(',').map(String::trim).contains(app.id)) return null
-    return stats.commitReel(Dates.isoDate(timestamp), app.id, timestamp, dwellMs)
+    return stats.commitReel(Dates.isoDate(timestamp), app.id, timestamp, dwellMs, isAd)
+  }
+
+  suspend fun addFeedTime(timestamp: Long, dwellMs: Int) {
+    if (dwellMs <= 0) return
+    stats.addFeedTime(Dates.isoDate(timestamp), dwellMs.toLong())
   }
 
   suspend fun todayTotal(): Int = stats.dayOrNull(Dates.isoDate())?.totalReels ?: 0
@@ -41,7 +46,7 @@ class Repository(context: Context) {
   suspend fun today(): DayTotal {
     val date = Dates.isoDate()
     val row = stats.dayOrNull(date)
-    return DayTotal(date, row?.totalReels ?: 0, row?.feedMs ?: 0L)
+    return DayTotal(date, row?.totalReels ?: 0, row?.feedMs ?: 0L, row?.adReels ?: 0)
   }
 
   suspend fun appCountsToday(): List<AppCount> = stats.appCounts(Dates.isoDate())

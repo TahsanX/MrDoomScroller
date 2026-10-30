@@ -69,15 +69,17 @@ export default function Onboarding() {
               <SectionTitle>Android will warn you. Here is the honest version.</SectionTitle>
               <Body muted>
                 The permission is broad: it lets an app read screen content. This one
-                reads layout structure in those five apps only — enough to tell a reel
-                feed from the rest of the app — and it is scoped to those five packages
-                in the service configuration, so it never sees anything else.
+                is scoped to those five apps in its service configuration and reads two
+                things there: the layout, to tell a reel feed from the rest of the app,
+                and the labels on the reel showing — username, caption — so the same
+                reel is not counted twice.
               </Body>
               <View style={styles.spacer} />
               <Body muted>
-                It never reads your messages, captions or account details. It stores a
-                daily count, a per-app count, and how long each reel was on screen.
-                That is all, and all of it stays here.
+                Those labels are turned into an anonymous code the moment they are read
+                and are never stored, logged or sent. What is stored is a daily count, a
+                per-app count, and how long each reel was on screen — on this phone
+                only.
               </Body>
             </Panel>
 

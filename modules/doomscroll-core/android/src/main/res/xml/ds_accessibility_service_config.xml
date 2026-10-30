@@ -2,7 +2,7 @@
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
   android:accessibilityEventTypes="typeWindowStateChanged|typeViewScrolled"
   android:accessibilityFeedbackType="feedbackGeneric"
-  android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows"
+  android:accessibilityFlags="flagIncludeNotImportantViews|flagReportViewIds|flagRetrieveInteractiveWindows"
   android:canPerformGestures="false"
   android:canRetrieveWindowContent="true"
   android:description="@string/ds_service_description"

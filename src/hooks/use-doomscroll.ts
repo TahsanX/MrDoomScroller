@@ -82,6 +82,7 @@ export function useToday() {
           ...current,
           total: event.total,
           feedMs: current.feedMs + event.dwellMs,
+          adReels: current.adReels + (event.isAd ? 1 : 0),
           apps,
         };
       });
@@ -114,7 +115,7 @@ export function useWeek() {
       const byDate = new Map(result.days.map((d) => [d.date, d]));
       const days = Array.from({ length: 7 }, (_, i) => {
         const date = isoDaysAgo(6 - i);
-        return byDate.get(date) ?? { date, total: 0, feedMs: 0 };
+        return byDate.get(date) ?? { date, total: 0, feedMs: 0, adReels: 0 };
       });
       setRange({ days, apps: result.apps });
     });

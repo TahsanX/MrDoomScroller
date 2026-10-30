@@ -19,6 +19,8 @@ export type Today = {
   total: number;
   /** Attributed watch time in milliseconds, summed over counted reels. */
   feedMs: number;
+  /** How many of `total` were sponsored. Included in `total`, not on top of it. */
+  adReels: number;
   brainState: BrainState;
   apps: AppCount[];
 };
@@ -27,6 +29,7 @@ export type DayTotal = {
   date: string;
   total: number;
   feedMs: number;
+  adReels: number;
 };
 
 export type RangeResult = {
@@ -78,7 +81,7 @@ export type ExportBundle = {
   settings: Settings;
   days: DayTotal[];
   appStats: { date: string; appId: AppId; count: number }[];
-  events: { timestamp: number; appId: AppId; dwellMs: number }[];
+  events: { timestamp: number; appId: AppId; dwellMs: number; isAd: boolean }[];
 };
 
 export type ReelCountedEvent = {
@@ -86,6 +89,7 @@ export type ReelCountedEvent = {
   /** Running total for today, after this reel. */
   total: number;
   dwellMs: number;
+  isAd: boolean;
 };
 
 export type LimitReachedEvent = {

@@ -17,7 +17,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 object CounterBus {
 
   fun interface Listener {
-    fun onReelCounted(appId: String, total: Int, dwellMs: Int)
+    fun onReelCounted(appId: String, total: Int, dwellMs: Int, isAd: Boolean)
   }
 
   fun interface LimitListener {
@@ -38,10 +38,10 @@ object CounterBus {
   /** True when something is actually listening, so the service can skip the work. */
   val hasListeners: Boolean get() = listeners.isNotEmpty()
 
-  fun publishReel(app: TargetApp, total: Int, dwellMs: Int) {
+  fun publishReel(app: TargetApp, total: Int, dwellMs: Int, isAd: Boolean) {
     for (listener in listeners) {
       // One bad listener must not take down the counting path.
-      runCatching { listener.onReelCounted(app.id, total, dwellMs) }
+      runCatching { listener.onReelCounted(app.id, total, dwellMs, isAd) }
     }
   }
 

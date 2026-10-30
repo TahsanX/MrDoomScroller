@@ -7,5 +7,5 @@
     only description of the service the user sees before granting, so it says exactly
     what is read and what leaves the device, which is nothing.
   -->
-  <string name="ds_service_description">MrDoomScroller watches scroll events in Instagram, YouTube, TikTok, Facebook and Snapchat so it can count how many short videos you swipe through. It reads the on-screen layout of those apps only to tell a short-video feed apart from the rest of the app. It never reads your messages, captions or account details, stores every count on this device only, and has no internet permission at all.</string>
+  <string name="ds_service_description">MrDoomScroller watches Instagram, YouTube, TikTok, Facebook and Snapchat so it can count how many short videos you swipe through. After each swipe it reads the visible screen of those apps: the layout, to tell a short-video feed from the rest of the app, and the labels on the current video, which are immediately turned into an anonymous code so the same video is not counted twice. The labels themselves are never stored, logged or sent anywhere. Only counts and timings are saved, on this device, and the app has no internet permission at all.</string>
 </resources>

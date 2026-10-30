@@ -85,8 +85,9 @@ export default function Calibration() {
             Turn on debug logging in Settings, run the same test again, and pull the
             log with{' '}
             <Text style={styles.code}>adb logcat -s DoomScroll/Service</Text>. Each
-            scroll event prints its container class, adapter index and deltas, which is
-            everything needed to fix that app&apos;s profile in{' '}
+            look at the screen prints whether a reel pager was found, why or why not,
+            and the first characters of the reel&apos;s anonymous code — never the
+            labels themselves. That is what is needed to fix that app&apos;s profile in{' '}
             <Text style={styles.code}>detection_profiles.json</Text>.
           </Body>
         </Panel>

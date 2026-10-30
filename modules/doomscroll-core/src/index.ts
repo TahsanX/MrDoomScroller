@@ -48,6 +48,7 @@ const EMPTY_TODAY: Today = {
   date: new Date().toISOString().slice(0, 10),
   total: 0,
   feedMs: 0,
+  adReels: 0,
   brainState: 'healthy',
   apps: [],
 };
