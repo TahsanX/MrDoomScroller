@@ -19,13 +19,14 @@ Android only. See [Why not iOS](#why-not-ios).
 | --- | --- |
 | Native module, service, detector, storage, overlay, widget, limits | Written |
 | TypeScript app (dashboard, onboarding, limits, history, settings, calibration) | Written, `tsc --noEmit` clean |
-| Detection profiles for the five apps | **Unverified guesswork — see below** |
-| Gradle / Kotlin compile | **Never run.** No JDK or Android SDK on the dev machine |
-| Device testing | **Never run** |
+| Detection profiles for the five apps | View ids taken from a shipped competitor APK; **not yet confirmed on a device** |
+| Gradle / Kotlin compile | **Never run locally.** No JDK or Android SDK on the dev machine; EAS builds it |
+| Device testing | One round done. Accuracy was under 30%; detection has since been rebuilt |
 
-The honest summary: the architecture and all the code are in place, and the
-TypeScript half is verified. The Kotlin half has never been through a compiler, and
-the detection profiles have never seen a real device. Both are the first thing to do.
+The honest summary: the TypeScript half is verified by `tsc` and ESLint, and the
+counting rules are pure functions with unit tests. The Kotlin has never been through
+a compiler on this machine, and the rebuilt detection has not yet been measured on a
+device. The in-app **Calibration** screen exists to measure exactly that.
 
 ## Why not iOS
 
@@ -64,9 +65,11 @@ Kotlin owns all detection and all data. TypeScript owns all UI. One module bound
 ┌─ Local Expo Module: doomscroll-core (Kotlin) ───────────────┐
 │  DoomScrollCoreModule  JS-facing API + event emitter        │
 │  CounterBus            in-process service → JS fan-out      │
-│  ScrollWatchService    AccessibilityService, the observer   │
-│  ReelDetector          pure state machine, 3 detection tiers│
-│  NodeScanner           bounded node-tree reads              │
+│  ScrollWatchService    AccessibilityService; schedules looks│
+│  PagerProbe            reads the screen: feed? which reel?  │
+│  ReelCounter           pure state machine: new / same / seen│
+│  Fingerprint           anonymous per-reel identity (hashed) │
+│  AdDetector            sponsored markers                    │
 │  LimitEnforcer         cap → notify / nudge / home          │
 │  OverlayController     floating counter (WindowManager)     │
 │  BlockOverlay          full-screen limit panel              │
@@ -96,55 +99,103 @@ genuinely disposable generated output — unlike the usual approach of committin
 
 ## How counting actually works
 
-Hardcoding `viewIdResourceName` strings is the obvious approach and the one that
-breaks on every app update: Instagram and TikTok are largely custom-drawn and expose
-very few stable ids. `ReelDetector` instead tries three tiers, in order of how much
-each can be trusted:
+### The approach that failed
 
-1. **Adapter index.** When the scroll source reports `toIndex`/`itemCount`, a page
-   change is unambiguous, and a multi-page fling is recovered exactly.
-2. **Scroll delta** (API 28+). Accumulate `scrollDeltaY` and emit one advance per
-   container-height crossed. Comparing horizontal against vertical movement is what
-   rejects carousels.
-3. **Debounced event count.** Last resort: one advance per event, rate-limited.
+The first version counted `TYPE_VIEW_SCROLLED` events, inferring page changes from
+adapter indices and scroll deltas. On a device it scored **under 30%**, and the three
+failures were all structural rather than tuning problems:
 
-Before any of that, structural checks reject the three biggest sources of phantom
-counts: a container covering less than ~85% of screen height (comment sheet, caption,
-story tray), clearly horizontal movement (carousel, tab swipe), and an unrecognised
-container class with no like/comment/share column to vouch for it.
+- **Profile scrolling counted as reels.** "Am I on a reel feed?" was decided on window
+  events. Instagram sends none when you switch tabs, so opening a creator's profile
+  from Reels left the feed "open" and every post scrolled past was counted.
+- **The same reel counted repeatedly.** Nothing identified *which* reel was on screen,
+  so a bounce-back swipe, a comment sheet or a like tap all looked like movement.
+- **Indices and deltas are not trustworthy.** Instagram and TikTok report them
+  inconsistently, and one swipe emits a burst of events.
 
-### Counting is not gated on dwell time
+### What replaced it
 
-An earlier design only counted a reel after ≥1.2s on screen. That is backwards: a fast
-fling through twenty reels is the *worst* kind of doomscrolling and would have scored
-zero. Dwell time is recorded as data — it drives the hour heatmap, the average, and
-"40 reels at 3 seconds each" — but the count follows page advances.
+Accessibility events are now only a signal for **when to look**, never evidence of
+what happened. Each settled look (`PagerProbe`) answers two questions from the live
+screen, and `ReelCounter` decides from the answers.
 
-Scrolling **back up** never counts, in any tier. Otherwise rocking a thumb up and down
-would inflate the number.
+**1. Is the short-form feed on screen?** Three mechanisms, in order:
 
-### Deriving the profiles (the real first task)
+- a visible node with one of the app's **surface ids** (`clips_viewer_view_pager`,
+  `reel_recycler`, …);
+- else the **geometry**: the innermost full-screen scrollable is a vertical pager
+  whose visible pages are each the height of the pager. A home feed's posts, a profile
+  grid's rows and a comment list all fail that shape;
+- else an **edge action column**: three or more like/comment/share buttons stacked
+  vertically in the outer quarter of the screen. A feed post lays the same buttons out
+  in a row, so it does not match.
 
-`assets/detection_profiles.json` currently holds informed guesses, every one marked
-`experimental: true`, and the UI surfaces that to the user. To fix a profile:
+There is no separate "profile detector" — a profile satisfies none of these, so it
+simply never counts.
+
+**2. Is this a reel we have not just seen?** `Fingerprint` reduces the reel's labels
+(author, caption) to a short hash. Digits are stripped, so a like count ticking from
+12.3K to 12.4K does not change it; action words are stripped, so tapping Like
+("Like" → "Unlike") does not either. The counter then classifies the hash as **new**,
+**the same one**, or **seen recently** (a 30-minute window), and counts only the first.
+That single comparison is what fixes bounce-backs, rewatches and comment sheets at once.
+
+A comment sheet or snackbar (`pauseIds`) suspends the probe outright: nothing about the
+current reel has changed, and scrolling the comments must not read as a swipe.
+
+This is the same shape the established counters on the Play Store use. BrainRot's
+`ReelsAccessibilityService` logs its decisions as `New scroll:` / `Recently counted,
+skipping:` — one identity, three outcomes.
+
+### Dwell time records, it does not gate
+
+A fast fling through twenty reels is the *worst* kind of doomscrolling, so counting is
+never gated on watch time. Dwell is recorded as data — it drives the hour heatmap and
+the per-reel average — with one exception: the reel already on screen when you *arrive*
+must stay there ~750ms before it counts, so passing through the Reels tab on the way
+somewhere else counts nothing.
+
+Scrolling **back up** never counts. Otherwise rocking a thumb up and down would inflate
+the number.
+
+### Ads
+
+Sponsored reels are counted like any other — swiping past one is still a swipe — but
+tagged, so the dashboard can show how many of the day's reels were ads. Detection is on
+whole labels, not words inside a caption: `Sponsored Reel by …` (Instagram), a bare
+`Ad` badge (YouTube), `Sponsored` / `Paid partnership` (Facebook), and the fixed
+call-to-action button labels every platform's ads carry.
+
+### Privacy
+
+The labels exist only inside `Fingerprint.of()` and are hashed before it returns.
+Nothing readable is stored, logged or transmitted — debug logging prints the *reason*
+and the first six characters of the hash, never the text. Combined with the absent
+`INTERNET` permission, there is no path by which a caption could leave the device.
+
+Bangla is handled explicitly: its vowel signs are combining marks, and treating them as
+word separators would shred every Bangla caption into fragments. Bangla control words
+and count words (হাজার, লাখ) are stripped like their English equivalents.
+
+### Tuning a profile
+
+`assets/detection_profiles.json` holds the view ids, read from BrainRot 21.0.632's
+shipped APK, plus geometry thresholds. Every profile is marked `experimental: true`
+until confirmed on a device, and the UI tells the user so. To re-tune one:
 
 ```bash
 # 1. See the real node tree while a Reel is on screen
 adb shell uiautomator dump /sdcard/w.xml && adb pull /sdcard/w.xml
 
-# 2. Turn on debug logging in Settings, then watch what the detector actually sees
+# 2. Turn on debug logging in Settings, then watch what the probe concludes
 adb logcat -s DoomScroll/Service
 ```
 
-Each scroll event logs its container class, adapter index range, deltas, height ratio
-and whether the action column was found. Fit the profile to that, then confirm with
-the in-app **Calibration** screen: scroll a known number of reels, type it in, read
-the error. Under-counting means the surface markers or height ratio are too strict;
-over-counting means something that is not a reel is slipping through, which is the
-worse direction to be wrong in.
-
-Budget realistically: Instagram and YouTube in an afternoon. TikTok, Facebook and
-Snapchat are messier and are the right things to defer.
+Each probe logs how the feed was recognised (`id`, `shape:p1/o0`, `action-column`) or
+why it was not, the label count, and a hash prefix. Then confirm with the in-app
+**Calibration** screen: scroll a known number of reels, type it in, read the error.
+Under-counting means the surface test is too strict; over-counting means something that
+is not a reel is getting through, which is the worse direction to be wrong in.
 
 ---
 
@@ -201,27 +252,35 @@ What needs a JDK:
 cd android && ./gradlew :doomscroll-core:test
 ```
 
-`ReelDetectorTest` is the important one. The detector is a pure state machine, so
-these cases are pinned down with no device: one advance per page, a three-page fling
-counting three, scroll-up counting zero, comment-sheet scroll rejected on height,
-carousel rejected on axis, an event burst from one gesture counting once, dwell
-attributed to the reel being left, and the last reel of a session being closed out on
-exit.
+`ReelCounterTest` is the important one. The counter is a pure state machine, so
+these cases are pinned down with no device: each new reel counting once, the same reel
+seen again counting zero, scrolling back to an earlier reel counting zero, labels
+changing on their own (auto-captions) counting zero, a profile scroll counting zero,
+leaving Reels closing the sitting immediately, passing through Reels in under 750ms
+counting zero, and dwell attributed to the reel being left.
+
+`FingerprintTest` covers the identity rules: like counts ticking up, tapping Like,
+relative timestamps and label order must all leave the hash unchanged, while a
+different creator must change it. `AdDetectorTest` covers sponsored markers versus a
+caption that merely mentions ads.
 
 What needs a device, per target app:
 
 - Scroll exactly 20 reels; compare against the counter (or use Calibration).
+- **Open a creator's profile from Reels and scroll their posts top to bottom.** This
+  is the failure that made the first version unusable; it must count **zero**.
 - Repeat with the comment sheet open, a carousel post, a Live, and the Explore grid.
-  All four must count **zero**.
+  All must count **zero**.
+- Swipe back up to a reel already counted — the number must not move.
 - Record pass/fail per app here, so the limits are documented rather than implied.
 
 | App | Verified | Notes |
 | --- | --- | --- |
-| Instagram | ☐ | |
-| YouTube | ☐ | |
-| TikTok | ☐ | highest-risk profile |
-| Facebook | ☐ | News Feed must not count as Reels |
-| Snapchat | ☐ | expect under-counting |
+| Instagram | ☐ | surface + pause + identity ids all known |
+| YouTube | ☐ | `reel_recycler`; the ordinary player must not count |
+| TikTok | ☐ | highest risk: ids are obfuscated per build |
+| Facebook | ☐ | no ids; relies on the edge action column. News Feed must count zero |
+| Snapchat | ☐ | expect under-counting; little is exposed to accessibility |
 
 Battery, after an hour idle with the service enabled — expect effectively zero, since
 the service is scoped to five packages in `ds_accessibility_service_config.xml`:
@@ -236,9 +295,9 @@ adb shell dumpsys batterystats --charged com.mrdoomscroller.app
 
 | Table | Retention | Why |
 | --- | --- | --- |
-| `daily_stats` | forever | date, total, attributed watch time |
+| `daily_stats` | forever | date, total, ad count, attributed watch time |
 | `daily_app_stats` | forever | per-app daily counts, normalised by app id |
-| `reel_events` | 30 days | one row per reel; powers the heatmap and dwell averages |
+| `reel_events` | 30 days | one row per reel (with its ad flag); powers the heatmap and dwell averages |
 | `app_settings` | — | single row |
 
 Per-app counts are a separate table rather than fixed columns because TikTok ships
@@ -247,6 +306,14 @@ a sixth target app needs no migration.
 
 Daily totals are never pruned. Only the granular event table has a retention window,
 because nothing needs per-reel detail after a month.
+
+Schema version 2 added the ad columns. The migration is additive (`ALTER TABLE … ADD
+COLUMN … DEFAULT 0`), so a user who has been counting for weeks keeps that history
+across the update rather than losing it to a destructive rebuild.
+
+Reel fingerprints are **not** a table. They live in memory, bounded to 300 entries and
+30 minutes, and die with the service — long enough to recognise a rewatch, short enough
+that nothing accumulates.
 
 Settings → **Export everything** hands the whole database over as JSON through the
 system share sheet, so the user picks the destination.
@@ -265,6 +332,12 @@ system share sheet, so the user picks the destination.
 - **Session cap added** alongside the daily cap: a limit that lands while you are
   still in the habit tends to stick better than one that arrives at the end of the
   day.
+- **Detection rebuilt around screen state**, not scroll events, after the first
+  device test (see *How counting actually works*). The plan's three-tier scroll-event
+  detector is gone.
+- **The floating counter can be dismissed by dragging it onto an ✕**, for the rest of
+  the sitting. Turning it off permanently stays a setting, so an accidental drop never
+  silently loses it.
 
 ## Layout
 
@@ -276,10 +349,32 @@ src/hooks/          data + permission hooks
 modules/doomscroll-core/
   src/              TypeScript API and types
   android/src/main/ Kotlin, layouts, res/xml, detection profiles
-  android/src/test/ detector unit tests
+  android/src/test/ counter, fingerprint and ad-detector unit tests
 ```
 
 Chart colours in `src/constants/doomscroll-theme.ts` were validated against the dark
 card surface for lightness band, chroma floor, adjacent-pair colour-vision
 separation, normal-vision separation and 3:1 contrast. Re-validate the set if you
 change a hue.
+
+---
+
+## Where the detection design came from
+
+The rebuilt detection follows the shape used by BrainRot 21.0.632
+(`com.brainrot.android`), read from its shipped APK with androguard after the first
+device test showed under-30% accuracy. What that established which this project had
+guessed wrong:
+
+- its `ReelsAccessibilityService` never counts an accessibility event — it reads the
+  screen, derives a per-reel identity, and classifies it as new / same / recently
+  counted (its own log lines are `New scroll:` and `Recently counted, skipping:`);
+- the view ids each app actually exposes, including the comment-sheet and snackbar
+  ids that must *pause* counting rather than end the sitting;
+- that ads are identified by whole-label markers and a fixed set of call-to-action
+  button labels, not by keywords inside captions;
+- that the like/comment/share labels need translating for a non-English phone — it
+  ships those words in some eighty languages.
+
+The implementation here is this project's own: the fingerprint, the hashing, the
+geometric and action-column fallbacks, and the arrival rule are not copied from it.
