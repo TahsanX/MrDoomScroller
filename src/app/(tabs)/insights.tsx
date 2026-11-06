@@ -5,8 +5,8 @@ import { AppBreakdown, Card, HourHeatmap } from '@/components/charts';
 import { Body, Panel, Screen, SectionTitle } from '@/components/ds-ui';
 import { Ink, SequentialBase, Spacing } from '@/constants/theme';
 import { formatDuration, isoDaysAgo, useInsights } from '@/hooks/use-scrollwise';
-import * as Core from '../../modules/scrollwise-core/src';
-import type { DayTotal, RangeResult } from '../../modules/scrollwise-core/src';
+import * as Core from '../../../modules/scrollwise-core/src';
+import type { DayTotal, RangeResult } from '../../../modules/scrollwise-core/src';
 
 const WINDOW_DAYS = 30;
 

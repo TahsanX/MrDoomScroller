@@ -5,24 +5,37 @@
   android:layout_height="match_parent"
   android:background="@drawable/sw_widget_background"
   android:gravity="center"
-  android:orientation="vertical"
+  android:orientation="horizontal"
   android:padding="10dp">
 
-  <TextView
-    android:id="@+id/sw_widget_count"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:fontFamily="sans-serif-medium"
-    android:text="0"
-    android:textColor="#FFFFFF"
-    android:textSize="28sp" />
+  <ImageView
+    android:layout_width="32dp"
+    android:layout_height="32dp"
+    android:contentDescription="@string/sw_service_label"
+    android:src="@drawable/sw_ellie_mark" />
 
-  <TextView
-    android:id="@+id/sw_widget_label"
+  <LinearLayout
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:alpha="0.75"
-    android:text="reels today"
-    android:textColor="#FFFFFF"
-    android:textSize="11sp" />
+    android:layout_marginStart="10dp"
+    android:orientation="vertical">
+
+    <TextView
+      android:id="@+id/sw_widget_count"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:fontFamily="sans-serif-medium"
+      android:text="0"
+      android:textColor="#F0EFEC"
+      android:textSize="26sp" />
+
+    <TextView
+      android:id="@+id/sw_widget_label"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:alpha="0.7"
+      android:text="reels today"
+      android:textColor="#C3C2B7"
+      android:textSize="11sp" />
+  </LinearLayout>
 </LinearLayout>

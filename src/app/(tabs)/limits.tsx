@@ -1,9 +1,10 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Body, Panel, Row, Screen, SectionTitle } from '@/components/ds-ui';
-import { Ink, Radius, Spacing, Surface } from '@/constants/theme';
+import { Body, Panel, Pressable96, Row, Screen, SectionTitle } from '@/components/ds-ui';
+import { LimitRing } from '@/components/limit-ring';
+import { Ink, Radius, Spacing, Surface, Type } from '@/constants/theme';
 import { useSettings, useToday } from '@/hooks/use-scrollwise';
-import type { BlockMode } from '../../modules/scrollwise-core/src';
+import type { BlockMode } from '../../../modules/scrollwise-core/src';
 
 const DAILY_OPTIONS = [0, 20, 40, 60, 100];
 const SESSION_OPTIONS = [0, 10, 20, 30, 50];
@@ -38,10 +39,12 @@ export default function Limits() {
     <Screen>
       <ScrollView contentContainerStyle={styles.content}>
         <Panel>
+          <LimitRing total={today?.total ?? 0} limit={settings.dailyLimit} />
+        </Panel>
+
+        <Panel>
           <SectionTitle>Daily cap</SectionTitle>
-          <Body muted>
-            Counted across all five apps. You are at {today?.total ?? 0} today.
-          </Body>
+          <Body muted>Counted across all five apps.</Body>
           <Chips
             options={DAILY_OPTIONS}
             value={settings.dailyLimit}
@@ -66,9 +69,10 @@ export default function Limits() {
         <Panel>
           <SectionTitle>What happens at the limit</SectionTitle>
           {MODES.map((mode) => (
-            <Pressable
+            <Pressable96
               key={mode.value}
               accessibilityRole="radio"
+              accessibilityLabel={mode.title}
               accessibilityState={{ selected: settings.blockMode === mode.value }}
               onPress={() => update({ blockMode: mode.value })}>
               <View style={styles.modeRow}>
@@ -83,7 +87,7 @@ export default function Limits() {
                   <Text style={styles.modeSubtitle}>{mode.subtitle}</Text>
                 </View>
               </View>
-            </Pressable>
+            </Pressable96>
           ))}
         </Panel>
 
@@ -168,7 +172,7 @@ const styles = StyleSheet.create({
     borderColor: Surface.border,
   },
   chipOn: { backgroundColor: Ink.primary, borderColor: Ink.primary },
-  chipText: { color: Ink.secondary, fontSize: 14, fontWeight: '600' },
+  chipText: { ...Type.label, color: Ink.secondary, fontWeight: '600' },
   chipTextOn: { color: Surface.page },
 
   modeRow: { flexDirection: 'row', paddingVertical: Spacing.md, gap: Spacing.md },
@@ -182,6 +186,6 @@ const styles = StyleSheet.create({
   },
   radioOn: { borderColor: Ink.primary, backgroundColor: Ink.primary },
   modeText: { flex: 1 },
-  modeTitle: { color: Ink.primary, fontSize: 15, fontWeight: '600' },
-  modeSubtitle: { color: Ink.muted, fontSize: 12, marginTop: 3, lineHeight: 17 },
+  modeTitle: { ...Type.body, color: Ink.primary, fontWeight: '600' },
+  modeSubtitle: { ...Type.caption, color: Ink.muted, marginTop: 3 },
 });

@@ -69,6 +69,39 @@ export const BrainStatePalette = {
   fried: { color: '#d03b3b', label: 'Fried', blurb: 'That is a lot of short video.' },
 } as const;
 
+/**
+ * Ellie's own colours. She is a mascot, not data, so she deliberately sits outside
+ * the chart palette — nothing she wears can be mistaken for a series or a status.
+ * Her fur reads clearly against both `Surface.page` and `Surface.card`.
+ */
+export const Ellie = {
+  fur: '#E2B887',
+  furShade: '#C2956A',
+  /** Inner ear, nose, tongue. */
+  pink: '#E58BA4',
+  eye: '#17160F',
+  eyeShine: '#FFFFFF',
+  whisker: 'rgba(255,255,255,0.45)',
+  blush: 'rgba(229,139,164,0.35)',
+} as const;
+
+/**
+ * Ellie's moods, and the accent that goes with each.
+ *
+ * The accents are the same reserved status colours the brain state uses, so a
+ * colour keeps one meaning across the whole app. `label` always ships beside the
+ * colour — the mood is never carried by hue alone.
+ */
+export const MoodPalette = {
+  content: { accent: '#0ca30c', label: 'Content' },
+  proud: { accent: '#0ca30c', label: 'Proud' },
+  watchful: { accent: '#fab219', label: 'Watchful' },
+  worried: { accent: '#d03b3b', label: 'Worried' },
+  sleepy: { accent: '#898781', label: 'Sleepy' },
+} as const;
+
+export type Mood = keyof typeof MoodPalette;
+
 export const Spacing = {
   xs: 4,
   sm: 8,
@@ -81,8 +114,48 @@ export const Spacing = {
 export const Radius = {
   /** Data-end radius on bars and cells. */
   mark: 4,
+  pill: 999,
   control: 12,
-  card: 16,
+  card: 18,
+  sheet: 24,
+} as const;
+
+/**
+ * Concentric radius: something inset by `pad` inside a `outer`-radius container
+ * should curve by `outer - pad`, or the two curves fight each other.
+ */
+export function innerRadius(outer: number, pad: number): number {
+  return Math.max(Radius.mark, outer - pad);
+}
+
+/**
+ * One type ramp, named by what a thing *is* rather than by its size, so a screen
+ * cannot quietly invent a fourteenth font size.
+ */
+export const Type = {
+  /** The count itself. Nothing else uses this. */
+  hero: { fontSize: 56, lineHeight: 60, fontWeight: '700' } as const,
+  display: { fontSize: 32, lineHeight: 38, fontWeight: '700' } as const,
+  title: { fontSize: 20, lineHeight: 26, fontWeight: '600' } as const,
+  heading: { fontSize: 16, lineHeight: 22, fontWeight: '600' } as const,
+  body: { fontSize: 15, lineHeight: 22, fontWeight: '400' } as const,
+  /** Ellie's speech, one step up from body so she reads as a voice. */
+  speech: { fontSize: 16, lineHeight: 24, fontWeight: '400' } as const,
+  label: { fontSize: 13, lineHeight: 18, fontWeight: '500' } as const,
+  caption: { fontSize: 12, lineHeight: 17, fontWeight: '400' } as const,
+  /** Axis ticks and table columns, where digits must line up. */
+  tick: { fontSize: 11, lineHeight: 15, fontWeight: '400' } as const,
+} as const;
+
+/** Shared motion timings, so nothing animates at an arbitrary speed. */
+export const Motion = {
+  /** Press feedback. */
+  pressScale: 0.96,
+  fast: 140,
+  base: 220,
+  slow: 420,
+  /** Gap between staggered children entering. */
+  stagger: 45,
 } as const;
 
 export const AppLabels: Record<string, string> = {

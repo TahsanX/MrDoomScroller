@@ -5,7 +5,7 @@ import { Alert, ScrollView, Share, StyleSheet } from 'react-native';
 import { Body, Button, Panel, Row, Screen, SectionTitle } from '@/components/ds-ui';
 import { Spacing } from '@/constants/theme';
 import { usePermissions, useSettings, useToday } from '@/hooks/use-scrollwise';
-import * as Core from '../../modules/scrollwise-core/src';
+import * as Core from '../../../modules/scrollwise-core/src';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -66,6 +66,7 @@ export default function SettingsScreen() {
             }
             onPress={Core.openAccessibilitySettings}
             badge={serviceEnabled ? 'ON' : 'OFF'}
+            badgeTone={serviceEnabled ? 'good' : 'bad'}
           />
           <Row
             title="Draw over other apps"
@@ -76,6 +77,7 @@ export default function SettingsScreen() {
             }
             onPress={Core.openOverlaySettings}
             badge={overlayGranted ? 'ON' : 'OFF'}
+            badgeTone={overlayGranted ? 'good' : 'neutral'}
           />
           <Button label="Re-check permissions" variant="quiet" onPress={refresh} />
         </Panel>

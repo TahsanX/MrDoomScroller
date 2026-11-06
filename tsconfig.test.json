@@ -1,0 +1,12 @@
+{
+  "//": "Tests run under node, so they get node types and node module resolution. The app config deliberately has neither: app code must never import a node builtin, and leaving those types out is what makes that a type error rather than a runtime surprise.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "customConditions": [],
+    "module": "node16",
+    "moduleResolution": "node16"
+  },
+  "include": ["src/**/*.test.ts"],
+  "exclude": ["node_modules"]
+}

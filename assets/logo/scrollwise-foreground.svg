@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Adaptive-icon foreground. Android masks adaptive icons to varying shapes and the
+  outer ~1/3 can be cropped, so Ellie sits inside the safe centre with the
+  background supplied as a flat layer.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="432" height="432" viewBox="0 0 432 432">
+  <g transform="translate(216 224) scale(1.12) translate(-70 -74)">
+    <polygon points="30,56 34,18 60,44" fill="#E2B887"/>
+    <polygon points="110,56 106,18 80,44" fill="#E2B887"/>
+    <polygon points="37,50 39,29 53,44" fill="#E58BA4"/>
+    <polygon points="103,50 101,29 87,44" fill="#E58BA4"/>
+    <ellipse cx="70" cy="74" rx="42" ry="37" fill="#E2B887"/>
+    <path d="M62 42 L66 54" stroke="#C2956A" stroke-width="4" stroke-linecap="round"/>
+    <path d="M70 40 L70 53" stroke="#C2956A" stroke-width="4" stroke-linecap="round"/>
+    <path d="M78 42 L74 54" stroke="#C2956A" stroke-width="4" stroke-linecap="round"/>
+    <ellipse cx="52" cy="72" rx="8" ry="9.5" fill="#17160F"/>
+    <ellipse cx="88" cy="72" rx="8" ry="9.5" fill="#17160F"/>
+    <circle cx="54.5" cy="69" r="3.2" fill="#FFFFFF" opacity="0.9"/>
+    <circle cx="90.5" cy="69" r="3.2" fill="#FFFFFF" opacity="0.9"/>
+    <path d="M70 85 L65 90 Q70 94 75 90 Z" fill="#E58BA4"/>
+    <path d="M61 95 Q65.5 101 70 95 Q74.5 101 79 95" stroke="#17160F" stroke-width="3"
+          stroke-linecap="round" fill="none"/>
+  </g>
+</svg>
