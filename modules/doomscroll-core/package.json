@@ -1,8 +1,0 @@
-{
-  "name": "doomscroll-core",
-  "version": "1.0.0",
-  "private": true,
-  "description": "Android-native reel detection, storage, overlay and widget for MrDoomScroller.",
-  "main": "src/index.ts",
-  "platforms": ["android"]
-}

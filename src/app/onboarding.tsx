@@ -3,9 +3,9 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Body, Button, Panel, Screen, SectionTitle } from '@/components/ds-ui';
-import { Ink, Spacing, Surface } from '@/constants/doomscroll-theme';
-import { usePermissions, useSettings } from '@/hooks/use-doomscroll';
-import * as Core from '../../modules/doomscroll-core/src';
+import { Ink, Spacing, Surface } from '@/constants/theme';
+import { usePermissions, useSettings } from '@/hooks/use-scrollwise';
+import * as Core from '../../modules/scrollwise-core/src';
 
 /**
  * Three steps: what it does, the accessibility grant, the overlay grant.
@@ -62,7 +62,7 @@ export default function Onboarding() {
             <Body>
               Android only exposes scroll events through an accessibility service, so
               that is what this app uses. On the next screen you will find
-              MrDoomScroller in the list and switch it on.
+              ScrollWise in the list and switch it on.
             </Body>
 
             <Panel>
@@ -90,7 +90,7 @@ export default function Onboarding() {
               <Body muted>
                 {serviceEnabled
                   ? 'The service is running. You can turn it off any time in Android settings, and the app will tell you it is off rather than pretending otherwise.'
-                  : 'Tap below, find MrDoomScroller under Installed apps or Downloaded services, and switch it on. Then come back here.'}
+                  : 'Tap below, find ScrollWise under Installed apps or Downloaded services, and switch it on. Then come back here.'}
               </Body>
               {!serviceEnabled ? (
                 <Button

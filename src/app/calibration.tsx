@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Body, Button, Panel, Screen, SectionTitle } from '@/components/ds-ui';
-import { Ink, Radius, Spacing, Surface } from '@/constants/doomscroll-theme';
-import { useToday } from '@/hooks/use-doomscroll';
+import { Ink, Radius, Spacing, Surface } from '@/constants/theme';
+import { useToday } from '@/hooks/use-scrollwise';
 
 /**
  * Measures how wrong the detector is, which is the only honest way to ship profiles
@@ -84,7 +84,7 @@ export default function Calibration() {
           <Body muted>
             Turn on debug logging in Settings, run the same test again, and pull the
             log with{' '}
-            <Text style={styles.code}>adb logcat -s DoomScroll/Service</Text>. Each
+            <Text style={styles.code}>adb logcat -s ScrollWise/Service</Text>. Each
             look at the screen prints whether a reel pager was found, why or why not,
             and the first characters of the reel&apos;s anonymous code — never the
             labels themselves. That is what is needed to fix that app&apos;s profile in{' '}

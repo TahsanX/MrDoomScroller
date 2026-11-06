@@ -14,8 +14,8 @@ import {
   Radius,
   Spacing,
   Surface,
-} from '@/constants/doomscroll-theme';
-import type { BrainState } from '../../modules/doomscroll-core/src';
+} from '@/constants/theme';
+import type { BrainState } from '../../modules/scrollwise-core/src';
 
 /**
  * The hero figure: today's count, with the brain state around it.

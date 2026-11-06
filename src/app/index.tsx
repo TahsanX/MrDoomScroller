@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrainStateHero } from '@/components/brain-state';
 import { AppBreakdown, Card, HourHeatmap, WeekBars } from '@/components/charts';
 import { Body, Button, Panel, Screen, SectionTitle, UnsupportedNotice } from '@/components/ds-ui';
-import { Ink, Spacing } from '@/constants/doomscroll-theme';
+import { Ink, Spacing } from '@/constants/theme';
 import {
   formatDuration,
   useInsights,
@@ -14,7 +14,7 @@ import {
   useSettings,
   useToday,
   useWeek,
-} from '@/hooks/use-doomscroll';
+} from '@/hooks/use-scrollwise';
 
 export default function Dashboard() {
   const router = useRouter();

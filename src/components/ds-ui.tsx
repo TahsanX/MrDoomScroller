@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
-import { Ink, Radius, Spacing, Surface } from '@/constants/doomscroll-theme';
+import { Ink, Radius, Spacing, Surface } from '@/constants/theme';
 
 /** Children are optional so `<Screen />` works as the empty loading state. */
 export function Screen({ children }: { children?: React.ReactNode }) {

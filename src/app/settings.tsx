@@ -3,9 +3,9 @@ import { useState } from 'react';
 import { Alert, ScrollView, Share, StyleSheet } from 'react-native';
 
 import { Body, Button, Panel, Row, Screen, SectionTitle } from '@/components/ds-ui';
-import { Spacing } from '@/constants/doomscroll-theme';
-import { usePermissions, useSettings, useToday } from '@/hooks/use-doomscroll';
-import * as Core from '../../modules/doomscroll-core/src';
+import { Spacing } from '@/constants/theme';
+import { usePermissions, useSettings, useToday } from '@/hooks/use-scrollwise';
+import * as Core from '../../modules/scrollwise-core/src';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -26,7 +26,7 @@ export default function SettingsScreen() {
       // Shared through the system sheet so the user picks the destination. The app
       // never writes anywhere on its own and has no network to send it over.
       await Share.share({
-        title: 'MrDoomScroller export',
+        title: 'ScrollWise export',
         message: JSON.stringify(bundle, null, 2),
       });
     } finally {

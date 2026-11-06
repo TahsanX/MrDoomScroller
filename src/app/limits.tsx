@@ -1,9 +1,9 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Body, Panel, Row, Screen, SectionTitle } from '@/components/ds-ui';
-import { Ink, Radius, Spacing, Surface } from '@/constants/doomscroll-theme';
-import { useSettings, useToday } from '@/hooks/use-doomscroll';
-import type { BlockMode } from '../../modules/doomscroll-core/src';
+import { Ink, Radius, Spacing, Surface } from '@/constants/theme';
+import { useSettings, useToday } from '@/hooks/use-scrollwise';
+import type { BlockMode } from '../../modules/scrollwise-core/src';
 
 const DAILY_OPTIONS = [0, 20, 40, 60, 100];
 const SESSION_OPTIONS = [0, 10, 20, 30, 50];

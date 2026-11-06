@@ -1,4 +1,4 @@
-# MrDoomScroller
+# ScrollWise
 
 Counts the short-form videos you scroll past — Instagram Reels, YouTube Shorts,
 TikTok, Facebook Reels, Snapchat Spotlight — and puts that number where you cannot
@@ -62,8 +62,8 @@ Kotlin owns all detection and all data. TypeScript owns all UI. One module bound
 └──────────────▲────────────────────────────┬─────────────────┘
       events   │  (live count, limit hit)   │  function calls
                │                            ▼
-┌─ Local Expo Module: doomscroll-core (Kotlin) ───────────────┐
-│  DoomScrollCoreModule  JS-facing API + event emitter        │
+┌─ Local Expo Module: scrollwise-core (Kotlin) ───────────────┐
+│  ScrollWiseCoreModule  JS-facing API + event emitter        │
 │  CounterBus            in-process service → JS fan-out      │
 │  ScrollWatchService    AccessibilityService; schedules looks│
 │  PagerProbe            reads the screen: feed? which reel?  │
@@ -83,14 +83,14 @@ Kotlin owns all detection and all data. TypeScript owns all UI. One module bound
 
 `onAccessibilityEvent` fires while the user's thumb is moving. Crossing the RN bridge
 there would stutter the app being watched, and would break outright in the normal
-case — the service runs with MrDoomScroller closed and no JS context alive at all. So
+case — the service runs with ScrollWise closed and no JS context alive at all. So
 the service writes to Room on its own single-threaded dispatcher, and JS only reads
 aggregates and subscribes to `CounterBus` for live updates while the app is open.
 
 ### Why the native code lives in the module, not in `android/`
 
 The service declaration, permissions, layouts and `res/xml` configs are all in
-`modules/doomscroll-core/android/src/main/`. Android's manifest merger folds them into
+`modules/scrollwise-core/android/src/main/`. Android's manifest merger folds them into
 the app. This means `expo prebuild --clean` cannot destroy any of it and `android/` is
 genuinely disposable generated output — unlike the usual approach of committing
 `android/` and treating it as source.
@@ -149,7 +149,7 @@ skipping:` — one identity, three outcomes.
 
 ### Dwell time records, it does not gate
 
-A fast fling through twenty reels is the *worst* kind of doomscrolling, so counting is
+A fast fling through twenty reels is the *worst* kind of scrollwiseing, so counting is
 never gated on watch time. Dwell is recorded as data — it drives the hour heatmap and
 the per-reel average — with one exception: the reel already on screen when you *arrive*
 must stay there ~750ms before it counts, so passing through the Reels tab on the way
@@ -188,7 +188,7 @@ until confirmed on a device, and the UI tells the user so. To re-tune one:
 adb shell uiautomator dump /sdcard/w.xml && adb pull /sdcard/w.xml
 
 # 2. Turn on debug logging in Settings, then watch what the probe concludes
-adb logcat -s DoomScroll/Service
+adb logcat -s ScrollWise/Service
 ```
 
 Each probe logs how the feed was recognised (`id`, `shape:p1/o0`, `action-column`) or
@@ -228,7 +228,7 @@ profile with `"android": { "buildType": "apk" }` so you get an APK rather than a
 ### First run on a device
 
 1. Install and open the app. Onboarding explains the permission before asking.
-2. Grant **Accessibility** → find MrDoomScroller, switch it on. Android shows a blunt
+2. Grant **Accessibility** → find ScrollWise, switch it on. Android shows a blunt
    warning here; the onboarding screen gives the honest version of what is read.
 3. Grant **Draw over other apps** (optional — counting works without it, you just
    lose the floating counter).
@@ -249,7 +249,7 @@ npm run lint
 What needs a JDK:
 
 ```bash
-cd android && ./gradlew :doomscroll-core:test
+cd android && ./gradlew :scrollwise-core:test
 ```
 
 `ReelCounterTest` is the important one. The counter is a pure state machine, so
@@ -283,10 +283,10 @@ What needs a device, per target app:
 | Snapchat | ☐ | expect under-counting; little is exposed to accessibility |
 
 Battery, after an hour idle with the service enabled — expect effectively zero, since
-the service is scoped to five packages in `ds_accessibility_service_config.xml`:
+the service is scoped to five packages in `sw_accessibility_service_config.xml`:
 
 ```bash
-adb shell dumpsys batterystats --charged com.mrdoomscroller.app
+adb shell dumpsys batterystats --charged com.scrollwise.app
 ```
 
 ---
@@ -346,13 +346,13 @@ src/app/            Expo Router screens
 src/components/     charts (plain Views), brain state, shared UI
 src/constants/      validated colour tokens — do not hand-edit a hue
 src/hooks/          data + permission hooks
-modules/doomscroll-core/
+modules/scrollwise-core/
   src/              TypeScript API and types
   android/src/main/ Kotlin, layouts, res/xml, detection profiles
   android/src/test/ counter, fingerprint and ad-detector unit tests
 ```
 
-Chart colours in `src/constants/doomscroll-theme.ts` were validated against the dark
+Chart colours in `src/constants/scrollwise-theme.ts` were validated against the dark
 card surface for lightness band, chroma floor, adjacent-pair colour-vision
 separation, normal-vision separation and 3:1 contrast. Re-validate the set if you
 change a hue.

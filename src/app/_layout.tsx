@@ -1,7 +1,7 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
-import { Ink, Surface } from '@/constants/doomscroll-theme';
+import { Ink, Surface } from '@/constants/theme';
 
 export default function RootLayout() {
   return (
@@ -15,7 +15,7 @@ export default function RootLayout() {
           headerShadowVisible: false,
           contentStyle: { backgroundColor: Surface.page },
         }}>
-        <Stack.Screen name="index" options={{ title: 'MrDoomScroller' }} />
+        <Stack.Screen name="index" options={{ title: 'ScrollWise' }} />
         <Stack.Screen
           name="onboarding"
           options={{ title: 'Setup', headerBackVisible: false }}

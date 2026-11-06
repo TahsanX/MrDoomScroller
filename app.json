@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "MrDoomScroller",
-    "slug": "mrdoomscroller",
+    "name": "ScrollWise",
+    "slug": "scrollwise",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mrdoomscroller",
+    "scheme": "scrollwise",
     "userInterfaceStyle": "dark",
     "android": {
       "adaptiveIcon": {
@@ -15,8 +15,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.mrdoomscroller.app",
-      "versionCode": 1
+      "package": "com.scrollwise.app",
+      "versionCode": 2
     },
     "plugins": [
       "expo-router",

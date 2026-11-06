@@ -10,10 +10,10 @@ import {
   Series,
   Spacing,
   Surface,
-} from '@/constants/doomscroll-theme';
+} from '@/constants/theme';
 // Relative rather than a tsconfig path alias: the native module lives outside src/,
 // and a relative specifier resolves identically in Metro, tsc and jest.
-import type { AppCount, DayTotal, HourBucket } from '../../modules/doomscroll-core/src';
+import type { AppCount, DayTotal, HourBucket } from '../../modules/scrollwise-core/src';
 
 /**
  * Charts are plain Views rather than a charting library.

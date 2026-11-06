@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="sw_service_label">ScrollWise counter</string>
+  <string name="sw_service_summary">Counts the short videos you scroll past.</string>
+  <!--
+    This is the text shown in Android's own accessibility settings screen. It is the
+    only description of the service the user sees before granting, so it says exactly
+    what is read and what leaves the device, which is nothing.
+  -->
+  <string name="sw_service_description">ScrollWise watches Instagram, YouTube, TikTok, Facebook and Snapchat so it can count how many short videos you swipe through. After each swipe it reads the visible screen of those apps: the layout, to tell a short-video feed from the rest of the app, and the labels on the current video, which are immediately turned into an anonymous code so the same video is not counted twice. The labels themselves are never stored, logged or sent anywhere. Only counts and timings are saved, on this device, and the app has no internet permission at all.</string>
+</resources>
