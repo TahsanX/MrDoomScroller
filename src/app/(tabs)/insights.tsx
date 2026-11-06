@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { AppBreakdown, Card, HourHeatmap } from '@/components/charts';
-import { Body, Panel, Screen, SectionTitle } from '@/components/ds-ui';
-import { Ink, SequentialBase, Spacing } from '@/constants/theme';
-import { formatDuration, isoDaysAgo, useInsights } from '@/hooks/use-scrollwise';
+import { AppBreakdown, Card, HourHeatmap, WeekBars } from '@/components/charts';
+import { Body, Panel, Screen, SectionTitle, Stagger } from '@/components/ds-ui';
+import { Ink, SequentialBase, Spacing, Type } from '@/constants/theme';
+import { formatDuration, isoDaysAgo, useInsights, useWeek } from '@/hooks/use-scrollwise';
 import * as Core from '../../../modules/scrollwise-core/src';
 import type { DayTotal, RangeResult } from '../../../modules/scrollwise-core/src';
 
@@ -13,6 +13,7 @@ const WINDOW_DAYS = 30;
 export default function History() {
   const [range, setRange] = useState<RangeResult>({ days: [], apps: [] });
   const insights = useInsights(WINDOW_DAYS);
+  const week = useWeek();
 
   useEffect(() => {
     Core.getRange(isoDaysAgo(WINDOW_DAYS - 1), isoDaysAgo(0)).then(setRange);
@@ -20,6 +21,7 @@ export default function History() {
 
   const totals = range.days.map((d) => d.total);
   const total = totals.reduce((a, b) => a + b, 0);
+  const adTotal = range.days.reduce((sum, d) => sum + d.adReels, 0);
   const busiest = range.days.reduce<DayTotal | null>(
     (best, day) => (best == null || day.total > best.total ? day : best),
     null
@@ -40,15 +42,20 @@ export default function History() {
               value={range.days.length ? `${Math.round(total / range.days.length)}` : '—'}
             />
             <Stat
-              label="Average per reel"
+              label="Per reel"
               value={
                 insights.averageDwellMs
                   ? `${Math.round(insights.averageDwellMs / 1000)}s`
                   : '—'
               }
             />
+            <Stat label="Ads" value={`${adTotal}`} />
           </View>
         </Card>
+
+        <Stagger index={1}>
+          <WeekBars days={week.days} />
+        </Stagger>
 
         {busiest && quietest ? (
           <Panel>
@@ -119,9 +126,9 @@ const styles = StyleSheet.create({
   content: { padding: Spacing.lg, paddingBottom: Spacing.xxl },
   statRow: { flexDirection: 'row', gap: Spacing.lg },
   stat: { flex: 1 },
-  statValue: { color: Ink.primary, fontSize: 20, fontWeight: '600' },
-  statLabel: { color: Ink.muted, fontSize: 11, marginTop: 2 },
-  extreme: { color: Ink.secondary, fontSize: 13, lineHeight: 20, marginTop: Spacing.xs },
+  statValue: { ...Type.title, color: Ink.primary, fontVariant: ['tabular-nums'] },
+  statLabel: { ...Type.tick, color: Ink.muted, marginTop: 2 },
+  extreme: { ...Type.body, color: Ink.secondary, marginTop: Spacing.xs },
   extremeValue: { color: Ink.primary, fontWeight: '600' },
   sparkRow: { flexDirection: 'row', alignItems: 'flex-end', height: 90, gap: 1 },
   sparkColumn: { flex: 1, justifyContent: 'flex-end' },

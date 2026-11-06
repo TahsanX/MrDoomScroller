@@ -1,6 +1,8 @@
 # ScrollWise
 
-Counts the short-form videos you scroll past — Instagram Reels, YouTube Shorts,
+**Ellie counts the reels.**
+
+ScrollWise counts the short-form videos you scroll past — Instagram Reels, YouTube Shorts,
 TikTok, Facebook Reels, Snapchat Spotlight — and puts that number where you cannot
 avoid it: floating over the feed while you scroll, and on your home screen when you
 are not.
@@ -199,6 +201,37 @@ is not a reel is getting through, which is the worse direction to be wrong in.
 
 ---
 
+## Ellie
+
+The mascot, and the app's voice. A cat, drawn in `react-native-svg` rather than
+imported: a mood changes her shapes — eyes, brows, ear angle, mouth — instead of
+swapping an asset, which is why she can blink, why every mood is free, and why she
+adds nothing measurable to the APK.
+
+### She talks without a model
+
+`src/lib/ellie.ts` is a pure function over the user's own numbers. No network, no
+LLM, nothing on device pretending to be one.
+
+The rule that matters: **every line must be earned by the data.** Each rule returns
+`null` rather than a fallback string, so Ellie can only say things the counts
+actually support. The tests check the negative case for every rule — that it stays
+silent when its condition does not hold — because her telling someone something
+their numbers do not say would be worse than her saying nothing.
+
+What she can notice: how today sits against the cap, the hour most of it happens in,
+which app dominates, how many of today's reels were ads, how fast the pace is, how
+today compares to yesterday and to the week's average, and a streak under the limit.
+
+Asking her is a sheet of tap-to-ask chips, not a text box. A text box would promise
+a conversation the app cannot have; the chips say exactly what she can answer.
+
+This is the reason the app still ships with **no `INTERNET` permission**. A cloud
+chatbot would have demoed better and would have cost the one claim the project
+actually makes.
+
+---
+
 ## Getting it running
 
 ### You need a toolchain first
@@ -242,8 +275,9 @@ profile with `"android": { "buildType": "apk" }` so you get an APK rather than a
 What can be run without a device:
 
 ```bash
-npx tsc --noEmit        # passes
+npm run typecheck   # app and tests, separately
 npm run lint
+npm test            # 18 tests over Ellie's rules
 ```
 
 What needs a JDK:
@@ -342,10 +376,12 @@ system share sheet, so the user picks the destination.
 ## Layout
 
 ```text
-src/app/            Expo Router screens
-src/components/     charts (plain Views), brain state, shared UI
-src/constants/      validated colour tokens — do not hand-edit a hue
-src/hooks/          data + permission hooks
+src/app/(tabs)/     Today · Insights · Limits · Settings
+src/app/            onboarding, calibration, the Ellie sheet
+src/components/     Ellie, charts, tab icons, shared UI
+src/constants/      tokens: validated colours, type ramp, radii, motion
+src/hooks/          data, permissions, and Ellie's view of them
+src/lib/ellie.ts    what Ellie says, and its tests
 modules/scrollwise-core/
   src/              TypeScript API and types
   android/src/main/ Kotlin, layouts, res/xml, detection profiles
