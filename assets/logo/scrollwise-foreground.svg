@@ -5,7 +5,7 @@
   background supplied as a flat layer.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" width="432" height="432" viewBox="0 0 432 432">
-  <g transform="translate(216 224) scale(1.12) translate(-70 -74)">
+  <g transform="translate(216 216) scale(2.4) translate(-70 -64.5)">
     <polygon points="30,56 34,18 60,44" fill="#E2B887"/>
     <polygon points="110,56 106,18 80,44" fill="#E2B887"/>
     <polygon points="37,50 39,29 53,44" fill="#E58BA4"/>
