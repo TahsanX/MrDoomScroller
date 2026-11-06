@@ -13,6 +13,24 @@ sending your data anywhere.
 
 Android only. See [Why not iOS](#why-not-ios).
 
+
+## Screenshots
+
+<p align="center">
+  <img src="docs/images/screen-today.png" width="22%" alt="Today — Ellie in sleepy mood, 21 reels, Instagram 16 / Facebook 5"/>
+  <img src="docs/images/screen-insights.png" width="22%" alt="Insights — 7-day chart, extremes, daily totals"/>
+  <img src="docs/images/screen-limit.png" width="22%" alt="Limit reached — full-screen interstitial at 20 reels"/>
+  <img src="docs/images/screen-limits.png" width="22%" alt="Limits — ring showing 21 of 20, daily cap and per-sitting controls"/>
+</p>
+
+## Ellie's moods
+
+<p align="center">
+  <img src="docs/images/ellie-moods.png" width="90%" alt="Ellie in content, proud, watchful, worried and sleepy moods"/>
+</p>
+
+*Drawn in <code>react-native-svg</code>; not an asset file. Each expression is a different set of shapes — the same component, different values.*
+
 ---
 
 ## Status

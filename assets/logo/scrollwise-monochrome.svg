@@ -2,8 +2,8 @@
 <!-- Themed-icon layer: one flat silhouette, since Android recolours this itself. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="432" height="432" viewBox="0 0 432 432">
   <g transform="translate(216 216) scale(2.4) translate(-70 -64.5)" fill="#FFFFFF">
-    <polygon points="30,56 34,18 60,44"/>
-    <polygon points="110,56 106,18 80,44"/>
+    <polygon points="33,66 34,18 60,44"/>
+    <polygon points="107,66 106,18 80,44"/>
     <ellipse cx="70" cy="74" rx="42" ry="37"/>
   </g>
 </svg>

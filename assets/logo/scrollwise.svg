@@ -9,8 +9,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="432" height="432" viewBox="0 0 432 432">
   <rect width="432" height="432" fill="#0d0d0d"/>
   <g transform="translate(216 216) scale(3.3) translate(-70 -64.5)">
-    <polygon points="30,56 34,18 60,44" fill="#E2B887"/>
-    <polygon points="110,56 106,18 80,44" fill="#E2B887"/>
+    <polygon points="33,66 34,18 60,44" fill="#E2B887"/>
+    <polygon points="107,66 106,18 80,44" fill="#E2B887"/>
     <polygon points="37,50 39,29 53,44" fill="#E58BA4"/>
     <polygon points="103,50 101,29 87,44" fill="#E58BA4"/>
     <ellipse cx="70" cy="74" rx="42" ry="37" fill="#E2B887"/>

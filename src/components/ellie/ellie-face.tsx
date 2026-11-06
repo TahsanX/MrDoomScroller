@@ -38,11 +38,11 @@ export const EllieFace = memo(function EllieFace({ mood, size = 150, blink = tru
       />
 
       <G rotation={-ear} origin="44, 52">
-        <Polygon points="30,56 34,20 60,44" fill={Ellie.fur} />
+        <Polygon points="33,66 34,20 60,44" fill={Ellie.fur} />
         <Polygon points="36,50 38,30 52,44" fill={Ellie.pink} />
       </G>
       <G rotation={ear} origin="96, 52">
-        <Polygon points="110,56 106,20 80,44" fill={Ellie.fur} />
+        <Polygon points="107,66 106,20 80,44" fill={Ellie.fur} />
         <Polygon points="104,50 102,30 88,44" fill={Ellie.pink} />
       </G>
 
@@ -186,8 +186,8 @@ function useBlink(enabled: boolean): boolean {
 export function EllieMark({ size = 28 }: { size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 140 140">
-      <Polygon points="30,56 34,20 60,44" fill={Ellie.fur} />
-      <Polygon points="110,56 106,20 80,44" fill={Ellie.fur} />
+      <Polygon points="33,66 34,20 60,44" fill={Ellie.fur} />
+      <Polygon points="107,66 106,20 80,44" fill={Ellie.fur} />
       <Ellipse cx="70" cy="74" rx="42" ry="37" fill={Ellie.fur} />
       <Ellipse cx="52" cy="71" rx="7" ry="8" fill={Ellie.eye} />
       <Ellipse cx="88" cy="71" rx="7" ry="8" fill={Ellie.eye} />
