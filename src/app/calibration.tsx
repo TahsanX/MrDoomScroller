@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Body, Button, Panel, Screen, SectionTitle } from '@/components/ds-ui';
-import { Ink, Radius, Spacing, Surface } from '@/constants/theme';
+import { Ink, Radius, Spacing, Surface, Type } from '@/constants/theme';
 import { useToday } from '@/hooks/use-scrollwise';
 
 /**
@@ -113,7 +113,9 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: Surface.border,
     color: Ink.primary,
-    fontSize: 18,
+    ...Type.title,
+    fontWeight: '400',
+    fontVariant: ['tabular-nums'],
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
     marginTop: Spacing.lg,
@@ -124,8 +126,8 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: Surface.border,
   },
-  resultLine: { color: Ink.secondary, fontSize: 14, marginBottom: Spacing.xs },
+  resultLine: { ...Type.body, color: Ink.secondary, marginBottom: Spacing.xs },
   resultValue: { color: Ink.primary, fontWeight: '600' },
-  verdict: { color: Ink.muted, fontSize: 13, lineHeight: 19, marginTop: Spacing.sm },
-  code: { color: Ink.secondary, fontFamily: 'monospace', fontSize: 12 },
+  verdict: { ...Type.label, fontWeight: '400', color: Ink.muted, marginTop: Spacing.sm },
+  code: { ...Type.caption, color: Ink.secondary, fontFamily: 'monospace' },
 });
