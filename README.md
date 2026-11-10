@@ -11,6 +11,8 @@ Everything is stored on the device. No accounts, no servers, no analytics. The a
 ships **without Android's `INTERNET` permission**, so it is structurally incapable of
 sending your data anywhere.
 
+[![Download Latest APK](https://img.shields.io/badge/Download-Latest%20APK-blue?style=for-the-badge&logo=android)](https://expo.dev/accounts/tahsan_x0/projects/mrdoomscroller/builds/622a17c4-a507-444b-a55c-52bc00476f0d)
+
 Android only. See [Why not iOS](#why-not-ios).
 
 
