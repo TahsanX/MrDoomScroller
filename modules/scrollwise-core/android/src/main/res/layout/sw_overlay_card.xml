@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Tapping the bubble opens this: today's number, how far it is from the cap, and the
+  two things a user in the middle of a feed actually wants — a break from being
+  counted, or the bubble out of the way. The outer frame is padding for the shadow.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="wrap_content"
+  android:layout_height="wrap_content"
+  android:padding="12dp">
+
+  <LinearLayout
+    android:layout_width="232dp"
+    android:layout_height="wrap_content"
+    android:background="@drawable/sw_overlay_card"
+    android:elevation="10dp"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:gravity="center_vertical"
+      android:orientation="horizontal">
+
+      <ImageView
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:importantForAccessibility="no"
+        android:src="@drawable/sw_ellie_mark" />
+
+      <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+          android:id="@+id/sw_card_count"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:fontFamily="sans-serif-black"
+          android:textColor="#FF221A3A"
+          android:textSize="18sp" />
+
+        <TextView
+          android:id="@+id/sw_card_sub"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="2dp"
+          android:fontFamily="sans-serif-medium"
+          android:textColor="#FF6E6789"
+          android:textSize="13sp" />
+      </LinearLayout>
+    </LinearLayout>
+
+    <ProgressBar
+      android:id="@+id/sw_card_progress"
+      style="?android:attr/progressBarStyleHorizontal"
+      android:layout_width="match_parent"
+      android:layout_height="8dp"
+      android:layout_marginTop="12dp"
+      android:max="1000"
+      android:progressDrawable="@drawable/sw_overlay_progress" />
+
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="16dp"
+      android:orientation="horizontal">
+
+      <TextView
+        android:id="@+id/sw_card_pause"
+        android:layout_width="0dp"
+        android:layout_height="44dp"
+        android:layout_weight="1.3"
+        android:background="@drawable/sw_overlay_chip_primary"
+        android:fontFamily="sans-serif-medium"
+        android:gravity="center"
+        android:text="@string/sw_overlay_pause"
+        android:textColor="#FFFFFFFF"
+        android:textSize="14sp" />
+
+      <TextView
+        android:id="@+id/sw_card_hide"
+        android:layout_width="0dp"
+        android:layout_height="44dp"
+        android:layout_marginStart="8dp"
+        android:layout_weight="1"
+        android:background="@drawable/sw_overlay_chip_quiet"
+        android:fontFamily="sans-serif-medium"
+        android:gravity="center"
+        android:text="@string/sw_overlay_hide"
+        android:textColor="#FF4B4466"
+        android:textSize="14sp" />
+    </LinearLayout>
+  </LinearLayout>
+</FrameLayout>

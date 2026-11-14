@@ -1,15 +1,22 @@
 import { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { Emoji } from '@/components/emoji';
+
 import {
   AppLabels,
+  AppSticker,
+  Font,
   HeatRamp,
   Ink,
+  Lift,
   Radius,
   SequentialBase,
   Series,
+  SeriesSoft,
   Spacing,
   Surface,
+  Type,
 } from '@/constants/theme';
 // Relative rather than a tsconfig path alias: the native module lives outside src/,
 // and a relative specifier resolves identically in Metro, tsc and jest.
@@ -27,14 +34,18 @@ import type { AppCount, DayTotal, HourBucket } from '../../modules/scrollwise-co
 
 const BAR_AREA_HEIGHT = 120;
 
-function Card({ title, subtitle, children }: {
+function Card({ title, subtitle, emoji, children }: {
   title: string;
   subtitle?: string;
+  emoji?: string;
   children: React.ReactNode;
 }) {
   return (
     <View style={styles.card}>
-      <Text style={styles.cardTitle}>{title}</Text>
+      <Text style={styles.cardTitle}>
+        {emoji ? `${emoji}  ` : ''}
+        {title}
+      </Text>
       {subtitle ? <Text style={styles.cardSubtitle}>{subtitle}</Text> : null}
       <View style={styles.cardBody}>{children}</View>
     </View>
@@ -50,7 +61,7 @@ export const WeekBars = memo(function WeekBars({ days }: { days: DayTotal[] }) {
   const todayIso = new Date().toISOString().slice(0, 10);
 
   return (
-    <Card title="Last 7 days" subtitle="Short videos counted per day">
+    <Card title="Last 7 days" subtitle="Short videos counted per day" emoji="📅">
       <View style={styles.barRow}>
         {days.map((day) => {
           const isToday = day.date === todayIso;
@@ -68,8 +79,8 @@ export const WeekBars = memo(function WeekBars({ days }: { days: DayTotal[] }) {
                     styles.bar,
                     {
                       height,
-                      backgroundColor: day.total === 0 ? Surface.gridline : SequentialBase,
-                      opacity: isToday || isPeak ? 1 : 0.72,
+                      backgroundColor:
+                        day.total === 0 ? Surface.gridline : isToday ? SequentialBase : '#C3B3FF',
                     },
                   ]}
                 />
@@ -86,17 +97,28 @@ export const WeekBars = memo(function WeekBars({ days }: { days: DayTotal[] }) {
 });
 
 /**
- * Per-app breakdown. Horizontal bars rather than a donut: the job is comparing
- * magnitudes, and every bar carries its app name and count as a direct label, so the
- * colour is a second channel rather than the only one.
+ * Per-app breakdown, as a ranked stack of tinted tiles: rank number, sticker, name,
+ * count, and a bar for magnitude. Each tile carries its app name and count in text,
+ * so the colour is a second channel rather than the only one.
  */
-export const AppBreakdown = memo(function AppBreakdown({ apps }: { apps: AppCount[] }) {
+export const AppBreakdown = memo(function AppBreakdown({
+  apps,
+  title = 'By app',
+  subtitle = 'Today',
+}: {
+  apps: AppCount[];
+  title?: string;
+  subtitle?: string;
+}) {
   const total = apps.reduce((sum, a) => sum + a.count, 0);
 
   if (total === 0) {
     return (
-      <Card title="By app" subtitle="Today">
-        <Text style={styles.empty}>Nothing counted yet today.</Text>
+      <Card title={title} subtitle={subtitle} emoji="🏆">
+        <View style={styles.emptyBox}>
+          <Emoji char="🌱" size={32} />
+          <Text style={styles.empty}>Nothing counted yet. A clean slate looks good on you.</Text>
+        </View>
       </Card>
     );
   }
@@ -104,24 +126,31 @@ export const AppBreakdown = memo(function AppBreakdown({ apps }: { apps: AppCoun
   const max = Math.max(...apps.map((a) => a.count));
 
   return (
-    <Card title="By app" subtitle="Today">
-      {apps.map((app) => (
-        <View key={app.appId} style={styles.hBarRow}>
-          <View style={styles.hBarHeader}>
-            <View style={[styles.swatch, { backgroundColor: Series[app.appId] }]} />
-            <Text style={styles.hBarLabel}>{AppLabels[app.appId] ?? app.appId}</Text>
-            <Text style={styles.hBarValue}>{app.count}</Text>
+    <Card title={title} subtitle={subtitle} emoji="🏆">
+      {apps.map((app, i) => (
+        <View
+          key={app.appId}
+          style={[styles.appTile, { backgroundColor: SeriesSoft[app.appId] ?? Surface.raised }]}>
+          <Text style={[styles.rank, { color: Series[app.appId] }]}>{i + 1}</Text>
+          <View style={styles.appSticker}>
+            <Text style={styles.appStickerText}>{AppSticker[app.appId] ?? '📱'}</Text>
           </View>
-          <View style={styles.hBarTrack}>
-            <View
-              style={[
-                styles.hBar,
-                {
-                  backgroundColor: Series[app.appId],
-                  width: `${Math.max(2, (app.count / max) * 100)}%`,
-                },
-              ]}
-            />
+          <View style={styles.appBody}>
+            <View style={styles.hBarHeader}>
+              <Text style={styles.hBarLabel}>{AppLabels[app.appId] ?? app.appId}</Text>
+              <Text style={[styles.hBarValue, { color: Series[app.appId] }]}>{app.count}</Text>
+            </View>
+            <View style={styles.hBarTrack}>
+              <View
+                style={[
+                  styles.hBar,
+                  {
+                    backgroundColor: Series[app.appId],
+                    width: `${Math.max(4, (app.count / max) * 100)}%`,
+                  },
+                ]}
+              />
+            </View>
           </View>
         </View>
       ))}
@@ -139,7 +168,7 @@ export const HourHeatmap = memo(function HourHeatmap({ hours }: { hours: HourBuc
   const max = Math.max(1, ...hours.map((h) => h.count));
 
   return (
-    <Card title="When you scroll" subtitle="Last 30 days, by hour">
+    <Card title="When you scroll" subtitle="Last 30 days, by hour" emoji="🕒">
       <View style={styles.heatRow}>
         {Array.from({ length: 24 }, (_, hour) => {
           const count = byHour.get(hour) ?? 0;
@@ -187,21 +216,29 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: Surface.card,
     borderRadius: Radius.card,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Surface.border,
-    padding: Spacing.lg,
-    marginBottom: Spacing.md,
+    padding: Spacing.xl,
+    marginBottom: Spacing.lg,
+    ...Lift,
   },
-  cardTitle: { color: Ink.primary, fontSize: 15, fontWeight: '600' },
-  cardSubtitle: { color: Ink.muted, fontSize: 12, marginTop: 2 },
+  cardTitle: { ...Type.heading, color: Ink.primary },
+  cardSubtitle: { ...Type.caption, color: Ink.muted, marginTop: 2 },
   cardBody: { marginTop: Spacing.lg },
-  empty: { color: Ink.muted, fontSize: 13 },
+  empty: { ...Type.caption, color: Ink.muted, flex: 1 },
+  emptyBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    backgroundColor: Surface.raised,
+    borderRadius: Radius.control,
+    padding: Spacing.lg,
+  },
 
   barRow: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.xs },
   barColumn: { flex: 1, alignItems: 'center' },
   barValue: {
+    ...Type.tick,
+    fontFamily: Font.bold,
     color: Ink.secondary,
-    fontSize: 11,
     marginBottom: Spacing.xs,
     fontVariant: ['tabular-nums'],
   },
@@ -210,37 +247,45 @@ const styles = StyleSheet.create({
     height: BAR_AREA_HEIGHT,
     justifyContent: 'flex-end',
     width: '100%',
-    // 2px of surface between adjacent bars.
-    paddingHorizontal: 1,
+    paddingHorizontal: 3,
   },
-  bar: {
-    width: '100%',
-    borderTopLeftRadius: Radius.mark,
-    borderTopRightRadius: Radius.mark,
-  },
-  axisLabel: { color: Ink.muted, fontSize: 11, marginTop: Spacing.sm },
-  axisLabelStrong: { color: Ink.secondary, fontWeight: '600' },
+  bar: { width: '100%', borderRadius: 8 },
+  axisLabel: { ...Type.tick, color: Ink.muted, marginTop: Spacing.sm },
+  axisLabelStrong: { color: Ink.primary, fontFamily: Font.bold },
 
-  hBarRow: { marginBottom: Spacing.md },
-  hBarHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.sm },
-  swatch: { width: 10, height: 10, borderRadius: 3, marginRight: Spacing.sm },
-  hBarLabel: { color: Ink.secondary, fontSize: 13, flex: 1 },
-  hBarValue: {
-    color: Ink.primary,
-    fontSize: 13,
-    fontWeight: '600',
-    fontVariant: ['tabular-nums'],
+  appTile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: Radius.control + 4,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+    gap: Spacing.md,
   },
+  rank: { ...Type.title, width: 20, textAlign: 'center', opacity: 0.55 },
+  appSticker: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: Surface.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ rotate: '-6deg' }],
+  },
+  appStickerText: { fontSize: 20 },
+  appBody: { flex: 1 },
+  hBarHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  hBarLabel: { ...Type.label, color: Ink.primary, flex: 1 },
+  hBarValue: { ...Type.heading, fontVariant: ['tabular-nums'] },
   hBarTrack: {
     height: 8,
-    backgroundColor: Surface.gridline,
-    borderRadius: Radius.mark,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    borderRadius: Radius.pill,
     overflow: 'hidden',
   },
-  hBar: { height: 8, borderRadius: Radius.mark },
+  hBar: { height: 8, borderRadius: Radius.pill },
 
   heatRow: { flexDirection: 'row', gap: 2 },
-  heatCell: { flex: 1, height: 28, borderRadius: 3 },
+  heatCell: { flex: 1, height: 32, borderRadius: 5 },
   heatAxis: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -252,8 +297,8 @@ const styles = StyleSheet.create({
     gap: 3,
     marginTop: Spacing.md,
   },
-  legendCell: { width: 14, height: 10, borderRadius: 2 },
-  legendText: { color: Ink.muted, fontSize: 11, marginHorizontal: Spacing.xs },
+  legendCell: { width: 14, height: 10, borderRadius: 3 },
+  legendText: { ...Type.tick, color: Ink.muted, marginHorizontal: Spacing.xs },
 });
 
 export { Card };

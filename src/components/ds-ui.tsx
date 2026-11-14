@@ -1,14 +1,28 @@
 import * as Haptics from 'expo-haptics';
-import { useEffect } from 'react';
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { useEffect, useId } from 'react';
+import { Pressable, StyleSheet, Switch, Text, View, type ViewStyle } from 'react-native';
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
   useSharedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
-import { Ink, innerRadius, Motion, Radius, Spacing, Surface, Type } from '@/constants/theme';
+import { Emoji } from '@/components/emoji';
+
+import {
+  Candy,
+  Font,
+  Ink,
+  innerRadius,
+  Lift,
+  Motion,
+  Radius,
+  Spacing,
+  Surface,
+  Type,
+} from '@/constants/theme';
 
 /** Children are optional so `<Screen />` works as the empty loading state. */
 export function Screen({ children }: { children?: React.ReactNode }) {
@@ -24,10 +38,8 @@ export function Body({ children, muted }: { children: React.ReactNode; muted?: b
 }
 
 /**
- * Press feedback shared by everything tappable.
- *
- * A scale rather than an opacity change: on a dark surface a dimming press reads as
- * the control switching off, while a shrink reads as it being pushed.
+ * Press feedback shared by everything tappable: a springy squish, like pressing a
+ * rubber sticker. A scale rather than a dim, so pressing never reads as "disabled".
  */
 export function Pressable96({
   children,
@@ -43,7 +55,7 @@ export function Pressable96({
   onPress?: () => void;
   disabled?: boolean;
   haptic?: boolean;
-  style?: object | object[];
+  style?: ViewStyle | ViewStyle[];
   accessibilityRole?: 'button' | 'radio' | 'tab' | 'link';
   accessibilityLabel?: string;
   accessibilityState?: { selected?: boolean; disabled?: boolean };
@@ -65,10 +77,10 @@ export function Pressable96({
           onPress?.();
         }}
         onPressIn={() => {
-          press.value = withTiming(1, { duration: Motion.fast });
+          press.value = withSpring(1, { damping: 18, stiffness: 420 });
         }}
         onPressOut={() => {
-          press.value = withTiming(0, { duration: Motion.fast });
+          press.value = withSpring(0, { damping: 9, stiffness: 300 });
         }}>
         {children}
       </Pressable>
@@ -76,23 +88,29 @@ export function Pressable96({
   );
 }
 
+/**
+ * Chunky candy button. The primary has a darker "lip" underneath, so it looks like
+ * something you can actually push in.
+ */
 export function Button({
   label,
   onPress,
   variant = 'primary',
   disabled,
+  color = Candy.violet,
 }: {
   label: string;
   onPress: () => void;
   variant?: 'primary' | 'secondary' | 'quiet';
   disabled?: boolean;
+  color?: string;
 }) {
   return (
     <Pressable96 onPress={onPress} disabled={disabled} haptic={variant === 'primary'}>
       <View
         style={[
           styles.button,
-          variant === 'primary' && styles.buttonPrimary,
+          variant === 'primary' && [styles.buttonPrimary, { backgroundColor: color, borderBottomColor: shade(color) }],
           variant === 'secondary' && styles.buttonSecondary,
           variant === 'quiet' && styles.buttonQuiet,
           disabled && styles.buttonDisabled,
@@ -101,6 +119,7 @@ export function Button({
           style={[
             styles.buttonLabel,
             variant === 'primary' && styles.buttonLabelPrimary,
+            variant === 'secondary' && { color },
             variant === 'quiet' && styles.buttonLabelQuiet,
           ]}>
           {label}
@@ -118,6 +137,8 @@ export function Row({
   onPress,
   badge,
   badgeTone = 'neutral',
+  emoji,
+  tint,
 }: {
   title: string;
   subtitle?: string;
@@ -126,9 +147,12 @@ export function Row({
   onPress?: () => void;
   badge?: string;
   badgeTone?: 'neutral' | 'good' | 'bad';
+  emoji?: string;
+  tint?: string;
 }) {
   const content = (
     <View style={styles.row}>
+      {emoji ? <Sticker emoji={emoji} tint={tint ?? Candy.violetSoft} size={44} /> : null}
       <View style={styles.rowText}>
         <View style={styles.rowTitleLine}>
           <Text style={styles.rowTitle}>{title}</Text>
@@ -143,8 +167,8 @@ export function Row({
             Haptics.selectionAsync().catch(() => {});
             onToggle(next);
           }}
-          trackColor={{ false: Surface.gridline, true: '#2a5f3f' }}
-          thumbColor={value ? '#0ca30c' : Ink.muted}
+          trackColor={{ false: Surface.axis, true: '#B8A6FF' }}
+          thumbColor={value ? Candy.violet : '#FFFFFF'}
         />
       ) : null}
       {onPress ? <Text style={styles.chevron}>›</Text> : null}
@@ -171,11 +195,7 @@ export function StatusPill({
 }) {
   return (
     <View
-      style={[
-        styles.pill,
-        tone === 'good' && styles.pillGood,
-        tone === 'bad' && styles.pillBad,
-      ]}>
+      style={[styles.pill, tone === 'good' && styles.pillGood, tone === 'bad' && styles.pillBad]}>
       <Text
         style={[
           styles.pillText,
@@ -188,37 +208,116 @@ export function StatusPill({
   );
 }
 
-export function Panel({ children }: { children: React.ReactNode }) {
-  return <View style={styles.panel}>{children}</View>;
+/** White floating card. `tint` swaps the white for a soft candy wash. */
+export function Panel({ children, tint }: { children: React.ReactNode; tint?: string }) {
+  return <View style={[styles.panel, tint ? { backgroundColor: tint } : null]}>{children}</View>;
 }
 
-/** A card that enters with a short stagger, so a screen assembles rather than snaps. */
+/**
+ * An emoji sitting on a soft rounded blob, tilted a few degrees so a column of them
+ * looks hand-placed rather than gridded. One place to swap in 3D art later.
+ */
+export function Sticker({
+  emoji,
+  tint,
+  size = 48,
+  tilt = -6,
+}: {
+  emoji: string;
+  tint: string;
+  size?: number;
+  tilt?: number;
+}) {
+  return (
+    <View
+      style={[
+        styles.sticker,
+        {
+          width: size,
+          height: size,
+          borderRadius: size * 0.36,
+          backgroundColor: tint,
+          transform: [{ rotate: `${tilt}deg` }],
+        },
+      ]}>
+      <Emoji char={emoji} size={size * 0.58} />
+    </View>
+  );
+}
+
+/**
+ * A card with a diagonal two-stop gradient behind its content. Reserved for hero
+ * moments — the count, the streak — so the gradient keeps meaning "this matters".
+ */
+export function GradientCard({
+  colors,
+  children,
+  style,
+}: {
+  colors: [string, string];
+  children: React.ReactNode;
+  style?: ViewStyle;
+}) {
+  const id = `g${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
+  return (
+    <View style={[styles.gradientCard, { shadowColor: colors[0] }, style]}>
+      <Svg style={StyleSheet.absoluteFill} preserveAspectRatio="none" viewBox="0 0 100 100">
+        <Defs>
+          <LinearGradient id={id} x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor={colors[0]} />
+            <Stop offset="1" stopColor={colors[1]} />
+          </LinearGradient>
+        </Defs>
+        <Rect x="0" y="0" width="100" height="100" fill={`url(#${id})`} />
+      </Svg>
+      {/* Two soft bubbles for depth: cartoon light, not a photo effect. */}
+      <View style={[styles.blob, styles.blobA]} />
+      <View style={[styles.blob, styles.blobB]} />
+      {children}
+    </View>
+  );
+}
+
+/** A card that bounces in with a short stagger, so a screen assembles rather than snaps. */
 export function Stagger({ index = 0, children }: { index?: number; children: React.ReactNode }) {
   return (
-    <Animated.View entering={FadeInDown.delay(index * Motion.stagger).duration(Motion.base)}>
+    <Animated.View
+      entering={FadeInDown.delay(index * Motion.stagger).springify().damping(16).stiffness(180)}>
       {children}
     </Animated.View>
   );
 }
 
-/** A quiet one-line banner, for things that are wrong but not urgent. */
+/** A one-line banner, for things that are wrong but not urgent. */
 export function Banner({
   text,
   actionLabel,
   onAction,
   tone = 'warn',
+  emoji,
 }: {
   text: string;
   actionLabel?: string;
   onAction?: () => void;
-  tone?: 'warn' | 'bad';
+  tone?: 'warn' | 'bad' | 'info';
+  emoji?: string;
 }) {
+  const palette =
+    tone === 'bad'
+      ? { bg: Candy.coralSoft, fg: Candy.coral }
+      : tone === 'info'
+        ? { bg: Candy.violetSoft, fg: Candy.violet }
+        : { bg: Candy.sunSoft, fg: '#B87700' };
   return (
     <Pressable96 onPress={onAction} disabled={!onAction}>
-      <View style={[styles.banner, tone === 'bad' && styles.bannerBad]}>
-        <View style={[styles.bannerDot, tone === 'bad' && styles.bannerDotBad]} />
+      <View style={[styles.banner, { backgroundColor: palette.bg }]}>
+        <Text style={styles.bannerEmoji}>{emoji ?? (tone === 'bad' ? '⚠️' : '💡')}</Text>
         <Text style={styles.bannerText}>{text}</Text>
-        {actionLabel ? <Text style={styles.bannerAction}>{actionLabel}</Text> : null}
+        {actionLabel ? (
+          <View style={[styles.bannerAction, { backgroundColor: palette.fg }]}>
+            <Text style={styles.bannerActionText}>{actionLabel}</Text>
+          </View>
+        ) : null}
       </View>
     </Pressable96>
   );
@@ -231,8 +330,8 @@ export function Banner({
  */
 export function UnsupportedNotice() {
   return (
-    <Panel>
-      <SectionTitle>Not available in this build</SectionTitle>
+    <Panel tint={Candy.sunSoft}>
+      <SectionTitle>🧪 Not available in this build</SectionTitle>
       <Body muted>
         Counting needs the native Android module, which is not present here. Run a
         development or release build on an Android device — Expo Go and the web bundle
@@ -249,7 +348,17 @@ export function useHapticOn(when: boolean, style = Haptics.NotificationFeedbackT
   }, [when, style]);
 }
 
-const CARD_PAD = Spacing.lg;
+/** A darker step of a hex colour, for button lips. */
+export function shade(hex: string, amount = 0.22): string {
+  const n = parseInt(hex.slice(1), 16);
+  const f = (c: number) => Math.max(0, Math.round(c * (1 - amount)));
+  const r = f((n >> 16) & 255);
+  const g = f((n >> 8) & 255);
+  const b = f(n & 255);
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+}
+
+const CARD_PAD = Spacing.xl;
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Surface.page },
@@ -258,64 +367,74 @@ const styles = StyleSheet.create({
   bodyMuted: { color: Ink.muted },
 
   button: {
+    minHeight: 52,
     paddingVertical: 14,
-    paddingHorizontal: Spacing.lg,
-    borderRadius: Radius.control,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: Radius.pill,
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: Spacing.md,
   },
-  buttonPrimary: { backgroundColor: Ink.primary },
-  buttonSecondary: {
-    backgroundColor: Surface.raised,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Surface.border,
-  },
-  buttonQuiet: { backgroundColor: 'transparent', paddingVertical: Spacing.md },
-  buttonDisabled: { opacity: 0.4 },
-  buttonLabel: { ...Type.label, fontSize: 15, color: Ink.primary, fontWeight: '600' },
-  buttonLabelPrimary: { color: Surface.page },
-  buttonLabelQuiet: { color: Ink.muted, fontWeight: '400' },
+  buttonPrimary: { borderBottomWidth: 4, ...Lift, shadowOpacity: 0.25 },
+  buttonSecondary: { backgroundColor: Candy.violetSoft },
+  buttonQuiet: { backgroundColor: 'transparent', minHeight: 44, paddingVertical: Spacing.sm },
+  buttonDisabled: { opacity: 0.45 },
+  buttonLabel: { ...Type.label, fontSize: 16, color: Ink.primary },
+  buttonLabelPrimary: { color: '#FFFFFF' },
+  buttonLabelQuiet: { color: Ink.muted, fontFamily: Font.regular },
 
   panel: {
     backgroundColor: Surface.card,
     borderRadius: Radius.card,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Surface.border,
     padding: CARD_PAD,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.lg,
+    ...Lift,
   },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.md },
-  rowText: { flex: 1, paddingRight: Spacing.md },
-  rowTitleLine: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  rowTitle: { ...Type.body, color: Ink.primary },
-  rowSubtitle: { ...Type.caption, color: Ink.muted, marginTop: 3 },
-  chevron: { color: Ink.muted, fontSize: 22, marginLeft: Spacing.sm },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.md, gap: Spacing.md },
+  rowText: { flex: 1 },
+  rowTitleLine: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, flexWrap: 'wrap' },
+  rowTitle: { ...Type.label, fontSize: 15, color: Ink.primary },
+  rowSubtitle: { ...Type.caption, color: Ink.muted, marginTop: 2 },
+  chevron: { color: Ink.muted, fontSize: 26, marginLeft: Spacing.xs },
 
   pill: {
     backgroundColor: Surface.raised,
     borderRadius: Radius.pill,
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 3,
   },
-  pillGood: { backgroundColor: 'rgba(12,163,12,0.16)' },
-  pillBad: { backgroundColor: 'rgba(208,59,59,0.16)' },
-  pillText: { ...Type.tick, color: Ink.muted, fontWeight: '600', letterSpacing: 0.4 },
-  pillTextGood: { color: '#4ad24a' },
-  pillTextBad: { color: '#ef7d7d' },
+  pillGood: { backgroundColor: Candy.mintSoft },
+  pillBad: { backgroundColor: Candy.coralSoft },
+  pillText: { ...Type.tick, fontFamily: Font.bold, color: Ink.muted, letterSpacing: 0.5 },
+  pillTextGood: { color: '#0B8A66' },
+  pillTextBad: { color: '#D63A4E' },
+
+  sticker: { alignItems: 'center', justifyContent: 'center' },
+
+  gradientCard: {
+    borderRadius: Radius.sheet,
+    overflow: 'hidden',
+    padding: CARD_PAD,
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 6,
+  },
+  blob: { position: 'absolute', borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.12)' },
+  blobA: { width: 180, height: 180, top: -60, right: -50 },
+  blobB: { width: 120, height: 120, bottom: -50, left: -30 },
 
   banner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
-    backgroundColor: 'rgba(250,178,25,0.12)',
+    gap: Spacing.md,
     borderRadius: innerRadius(Radius.card, 4),
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.lg,
     marginBottom: Spacing.md,
   },
-  bannerBad: { backgroundColor: 'rgba(208,59,59,0.14)' },
-  bannerDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#fab219' },
-  bannerDotBad: { backgroundColor: '#d03b3b' },
-  bannerText: { ...Type.caption, color: Ink.secondary, flex: 1, lineHeight: 18 },
-  bannerAction: { ...Type.caption, color: Ink.primary, fontWeight: '600' },
+  bannerEmoji: { fontSize: 20 },
+  bannerText: { ...Type.caption, color: Ink.secondary, flex: 1 },
+  bannerAction: { borderRadius: Radius.pill, paddingHorizontal: 14, paddingVertical: 6 },
+  bannerActionText: { ...Type.label, fontSize: 13, color: '#FFFFFF' },
 });

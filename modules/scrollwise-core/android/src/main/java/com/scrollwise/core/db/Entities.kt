@@ -78,10 +78,22 @@ data class AppSettings(
   val debugLogging: Boolean = false,
   val onboardingComplete: Boolean = false,
   val healthyMax: Int = 20,
-  val fatiguedMax: Int = 60
+  val fatiguedMax: Int = 60,
+  /**
+   * Epoch millis until which nothing is counted, the bubble stays hidden and no
+   * limit fires. 0 means not paused; [PAUSED_INDEFINITELY] means until the user
+   * resumes by hand. Added in schema version 3.
+   */
+  @ColumnInfo(defaultValue = "0")
+  val pausedUntil: Long = 0
 ) {
+  fun isPaused(now: Long = System.currentTimeMillis()): Boolean = pausedUntil > now
+
   companion object {
     const val SINGLETON_ID = 1
+
+    /** Far enough out to mean "until resumed", small enough to survive a JS number. */
+    const val PAUSED_INDEFINITELY = 8_640_000_000_000_000L
   }
 }
 

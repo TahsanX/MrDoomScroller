@@ -63,6 +63,7 @@ const DEFAULT_SETTINGS: Settings = {
   onboardingComplete: false,
   healthyMax: 20,
   fatiguedMax: 60,
+  pausedUntil: 0,
 };
 
 export function isServiceEnabled(): boolean {

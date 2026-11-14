@@ -4,8 +4,9 @@ import android.graphics.Rect
 import android.view.accessibility.AccessibilityNodeInfo
 import com.scrollwise.core.detect.AdDetector
 import com.scrollwise.core.detect.DetectionProfile
+import com.scrollwise.core.detect.EdgeColumn
 import com.scrollwise.core.detect.Fingerprint
-import kotlin.math.roundToInt
+import com.scrollwise.core.detect.NodeSnap
 
 /**
  * Looks at the live node tree once and answers: is the short-form feed on screen,
@@ -20,9 +21,9 @@ import kotlin.math.roundToInt
  *    - the innermost full-screen scrollable is a vertical pager whose visible pages
  *      are each the height of the pager — the home feed's posts, a profile grid's
  *      rows and a comment list all fail that shape;
- *    - or a column of at least three action buttons (like, comment, share…) stacked
- *      at the edge of the screen. Every short-form player has one; a feed post's
- *      buttons sit in a horizontal row instead.
+ *    - or a column of action buttons (like, comment, share…) stacked at the edge of
+ *      the screen. Every short-form player has one. See [EdgeColumn], including the
+ *      strict rules Facebook needs because its feed stacks one "Like" per post.
  *    There is no separate "profile detector": a profile shows none of these.
  * 3. **Which reel?** Labels from the app's identity nodes (author, caption) when it
  *    has them; otherwise everything on the visible page. Hashed by [Fingerprint].
@@ -75,6 +76,7 @@ object PagerProbe {
       var page: AccessibilityNodeInfo? = null
       var pageArea: Rect = screen
       val how: String
+      var columnIdentity: List<String> = emptyList()
 
       if (surfaceNode != null) {
         how = "id"
@@ -85,7 +87,9 @@ object PagerProbe {
         page = shape.visiblePage
         pageArea = page?.let { visibleRectOf(it, bounds) } ?: bounds
       } else {
-        val pager = innermostFullScreenScrollable(root, profile, screenWidth, screenHeight, held)
+        val pager = if (profile.shapeFallback) {
+          innermostFullScreenScrollable(root, profile, screenWidth, screenHeight, held)
+        } else null
         val excluded = pager != null && profile.isExcluded(pager.viewIdResourceName)
         val bounds = Rect()
         pager?.getBoundsInScreen(bounds)
@@ -95,15 +99,28 @@ object PagerProbe {
           how = "shape:${shape.reason}"
           page = shape.visiblePage
           pageArea = page?.let { visibleRectOf(it, bounds) } ?: bounds
-        } else if (!excluded && hasEdgeActionColumn(root, screenWidth, screenHeight, held)) {
-          how = "action-column"
         } else {
-          val why = when {
-            excluded -> "excluded-id"
-            pager == null -> "no-fullscreen-scrollable"
-            else -> "shape:${shape?.reason}"
+          val column = if (excluded) null else EdgeColumn.evaluate(
+            snapshot(root, screen, held),
+            screenWidth,
+            screenHeight,
+            profile.strictActionColumn
+          )
+          if (column != null && column.found) {
+            how = "action-column:${column.reason}"
+            columnIdentity = column.identity
+          } else if (column != null && column.typing) {
+            // A comment box over the reel: same reel, nothing to count.
+            return Result(true, false, null, false, "paused:typing")
+          } else {
+            val why = when {
+              excluded -> "excluded-id"
+              column != null && !profile.shapeFallback -> column.reason
+              pager == null -> "no-fullscreen-scrollable"
+              else -> "shape:${shape?.reason} ${column?.reason}"
+            }
+            return Result(false, false, null, false, why)
           }
-          return Result(false, false, null, false, why)
         }
       }
 
@@ -121,11 +138,19 @@ object PagerProbe {
           ?: continue
         collectLabels(node, pageArea, idLabels, held)
       }
-      val labels = if (idLabels.isNotEmpty()) idLabels else pageLabels
+      val labels = when {
+        idLabels.isNotEmpty() -> idLabels
+        columnIdentity.isNotEmpty() -> columnIdentity
+        else -> pageLabels
+      }
       val fingerprint = Fingerprint.of(labels, profile.genericTokens)
       val isAd = AdDetector.isAd(pageLabels)
 
-      val source = if (idLabels.isNotEmpty()) "idnodes" else "page"
+      val source = when {
+        idLabels.isNotEmpty() -> "idnodes"
+        columnIdentity.isNotEmpty() -> "author+caption"
+        else -> "page"
+      }
       return Result(false, true, fingerprint, isAd, "$how labels=${labels.size}/$source ad=$isAd")
     } finally {
       // Every node obtained from the tree must be released on older releases or the
@@ -214,40 +239,15 @@ object PagerProbe {
   }
 
   /**
-   * Action words, matched as whole tokens of a button's label. English plus the
-   * languages a phone in this app's first market is likely set to.
+   * The visible nodes on screen, copied out for [EdgeColumn]. Bounded like every other
+   * walk here, because this runs while the user is scrolling.
    */
-  private val ACTION_WORDS = setOf(
-    "like", "liked", "unlike", "comment", "comments", "share", "send", "remix", "save",
-    "dislike", "reply", "favorite", "favourite",
-    "লাইক", "কমেন্ট", "মন্তব্য", "শেয়ার", "শেয়ার", "সেভ",
-    "लाइक", "कमेंट", "टिप्पणी", "शेयर"
-  )
-
-  private const val EDGE_FRACTION = 0.25f
-  private const val COLUMN_BUCKET_FRACTION = 0.06f
-  private const val MIN_COLUMN_BUTTONS = 3
-
-  /** The column must spread over at least this share of the screen height. */
-  private const val MIN_COLUMN_SPREAD = 0.12f
-
-  /**
-   * At least [MIN_COLUMN_BUTTONS] action-labelled nodes stacked in one column within
-   * the outer quarter of the screen, at different heights.
-   *
-   * The established counters use the same signature for apps with no stable ids: a
-   * short-form player's like/comment/share stack sits at the screen's edge, while a
-   * feed post lays the same buttons out in a horizontal row.
-   */
-  private fun hasEdgeActionColumn(
+  private fun snapshot(
     root: AccessibilityNodeInfo,
-    screenWidth: Int,
-    screenHeight: Int,
+    screen: Rect,
     held: MutableList<AccessibilityNodeInfo>
-  ): Boolean {
-    val bucketWidth = (screenWidth * COLUMN_BUCKET_FRACTION).coerceAtLeast(1f)
-    // Column bucket -> centre-y of each action node in it.
-    val columns = HashMap<Int, MutableList<Int>>()
+  ): List<NodeSnap> {
+    val out = ArrayList<NodeSnap>()
     var budget = MAX_NODES
     val rect = Rect()
 
@@ -255,16 +255,19 @@ object PagerProbe {
       if (budget-- <= 0 || depth > MAX_DEPTH) return
       if (!node.isVisibleToUser) return
       node.getBoundsInScreen(rect)
-
-      val label = (node.contentDescription ?: node.text)?.toString()
-      if (!label.isNullOrBlank() && Fingerprint.tokens(label).any { it in ACTION_WORDS }) {
-        val cx = rect.exactCenterX()
-        val onEdge = cx >= screenWidth * (1 - EDGE_FRACTION) || cx <= screenWidth * EDGE_FRACTION
-        if (onEdge) {
-          columns.getOrPut((cx / bucketWidth).roundToInt()) { ArrayList() }.add(rect.centerY())
-        }
+      if (Rect.intersects(rect, screen)) {
+        out.add(
+          NodeSnap(
+            text = node.text?.toString(),
+            desc = node.contentDescription?.toString(),
+            className = node.className?.toString(),
+            left = rect.left,
+            top = rect.top,
+            right = rect.right,
+            bottom = rect.bottom
+          )
+        )
       }
-
       for (i in 0 until node.childCount) {
         if (budget <= 0) return
         val child = node.getChild(i) ?: continue
@@ -274,11 +277,7 @@ object PagerProbe {
     }
 
     visit(root, 0)
-    return columns.values.any { ys ->
-      val distinct = ys.distinct()
-      distinct.size >= MIN_COLUMN_BUTTONS &&
-        (distinct.max() - distinct.min()) >= screenHeight * MIN_COLUMN_SPREAD
-    }
+    return out
   }
 
   private fun looksScrollable(node: AccessibilityNodeInfo): Boolean {

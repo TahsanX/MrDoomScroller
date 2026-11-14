@@ -1,106 +1,165 @@
 /**
  * Visual tokens for ScrollWise.
  *
- * The app is dark-only, so these are the dark-surface steps of a validated
- * palette — not a flipped light palette. The five series hues were run through the
- * palette validator against the card surface below and clear the lightness band,
- * chroma floor, adjacent-pair CVD separation, normal-vision floor and 3:1 contrast.
- * Do not hand-edit a hue here without re-validating the set.
+ * Light, bright and a little cartoonish: a soft lavender page, white sticker-like
+ * cards, and one candy colour per idea. 60/30/10 — the lavender/white neutrals carry
+ * most of the screen, deep violet ink does the reading, and the candy hues are
+ * spent on the things worth looking at (the count, the streak, the mode switch).
+ *
+ * Shadows are tinted violet, never grey, so cards float on the lavender rather than
+ * looking dirty on it.
  */
 
 export const Surface = {
   /** Page plane. */
-  page: '#0d0d0d',
-  /** Card / chart surface. The surface every colour below was validated against. */
-  card: '#1a1a19',
-  /** Raised control. */
-  raised: '#232322',
-  gridline: '#2c2c2a',
-  axis: '#383835',
-  border: 'rgba(255,255,255,0.10)',
+  page: '#F5F2FF',
+  /** Card / chart surface. */
+  card: '#FFFFFF',
+  /** Raised control, chip track, input. */
+  raised: '#EFEAFD',
+  gridline: '#ECE7FA',
+  axis: '#D8D0F2',
+  border: 'rgba(108,76,245,0.10)',
 } as const;
 
 export const Ink = {
-  primary: '#f0efec',
-  secondary: '#c3c2b7',
-  muted: '#898781',
+  primary: '#221A3A',
+  secondary: '#4B4466',
+  muted: '#7F789A',
   /** Label sitting inside a filled mark. */
   onFill: '#ffffff',
 } as const;
 
 /**
+ * The candy set. Each has a strong form for marks and text-on-white, and a soft
+ * tint for the card it lives on.
+ */
+export const Candy = {
+  violet: '#6C4CF5',
+  violetSoft: '#ECE6FF',
+  coral: '#FF5C70',
+  coralSoft: '#FFE7EA',
+  mint: '#14B88A',
+  mintSoft: '#DCF7EE',
+  sun: '#F5A300',
+  sunSoft: '#FFF2D1',
+  sky: '#2E9BF0',
+  skySoft: '#E0F0FF',
+  pink: '#F25BB5',
+  pinkSoft: '#FFE5F4',
+} as const;
+
+/** Soft tinted shadow for floating cards. Spread into a style. */
+export const Lift = {
+  shadowColor: '#5B3FD9',
+  shadowOpacity: 0.12,
+  shadowRadius: 18,
+  shadowOffset: { width: 0, height: 8 },
+  elevation: 4,
+} as const;
+
+/**
  * Categorical slots, in fixed order. Assigned to apps by identity and never
  * re-assigned when a filter changes which apps are on screen — the colour follows
- * the app, not its rank.
+ * the app, not its rank. Each clears 3:1 against the white card.
  */
 export const Series = {
-  instagram: '#d55181',
-  youtube: '#e66767',
-  tiktok: '#199e70',
-  facebook: '#3987e5',
-  snapchat: '#c98500',
+  instagram: '#E2407E',
+  youtube: '#EE3E3E',
+  tiktok: '#0FA79A',
+  facebook: '#3778E8',
+  snapchat: '#D99400',
+} as const;
+
+/** Soft card tint per app, for the coloured per-app tiles. */
+export const SeriesSoft = {
+  instagram: '#FFE6F0',
+  youtube: '#FFE5E5',
+  tiktok: '#DDF6F3',
+  facebook: '#E2ECFF',
+  snapchat: '#FFF3CF',
+} as const;
+
+/** A sticker emoji per app, so a tile reads before its label does. */
+export const AppSticker = {
+  instagram: '📸',
+  youtube: '▶️',
+  tiktok: '🎵',
+  facebook: '👍',
+  snapchat: '👻',
 } as const;
 
 /** Single hue for one-series magnitude: the 7-day bars. */
-export const SequentialBase = '#3987e5';
+export const SequentialBase = Candy.violet;
 
 /**
- * Sequential ramp for the hour-of-day heatmap, ordered near-zero first. On a dark
- * surface near-zero is the darkest step and recedes into the card, so magnitude
- * reads as "brighter".
+ * Sequential ramp for the hour-of-day heatmap, ordered near-zero first. On a light
+ * surface near-zero is the palest step, so magnitude reads as "deeper".
  */
 export const HeatRamp = [
-  '#2c2c2a',
-  '#184f95',
-  '#256abf',
-  '#3987e5',
-  '#6da7ec',
-  '#9ec5f4',
+  '#EFEAFD',
+  '#D6CAFF',
+  '#B6A1FF',
+  '#9479FB',
+  '#7652F2',
+  '#5531D4',
 ] as const;
 
 /**
- * Brain state. These are status colours, reserved and never reused as a series
- * hue. Each one always ships with its label, so the state is never carried by
- * colour alone.
+ * Brain state. Status colours, reserved and never reused as a series hue. Each one
+ * always ships with its label, so the state is never carried by colour alone.
  */
 export const BrainStatePalette = {
-  healthy: { color: '#0ca30c', label: 'Healthy', blurb: 'Light scrolling today.' },
-  fatigued: { color: '#fab219', label: 'Fatigued', blurb: 'Starting to add up.' },
-  fried: { color: '#d03b3b', label: 'Fried', blurb: 'That is a lot of short video.' },
+  healthy: { color: '#14B88A', label: 'Healthy', blurb: 'Light scrolling today.' },
+  fatigued: { color: '#F5A300', label: 'Fatigued', blurb: 'Starting to add up.' },
+  fried: { color: '#FF5C70', label: 'Fried', blurb: 'That is a lot of short video.' },
 } as const;
 
 /**
- * Ellie's own colours. She is a mascot, not data, so she deliberately sits outside
- * the chart palette — nothing she wears can be mistaken for a series or a status.
- * Her fur reads clearly against both `Surface.page` and `Surface.card`.
+ * Ellie's own colours. She is a mascot, not data, so she sits outside the chart
+ * palette. A dark brown outline gives her the sticker/cartoon edge on light pages.
  */
 export const Ellie = {
-  fur: '#E2B887',
-  furShade: '#C2956A',
+  fur: '#F4C28D',
+  furShade: '#D99A62',
+  /** Cartoon outline. */
+  outline: '#5A3A22',
   /** Inner ear, nose, tongue. */
-  pink: '#E58BA4',
-  eye: '#17160F',
+  pink: '#FF8FB1',
+  eye: '#2A1B12',
   eyeShine: '#FFFFFF',
-  whisker: 'rgba(255,255,255,0.45)',
-  blush: 'rgba(229,139,164,0.35)',
+  whisker: 'rgba(90,58,34,0.45)',
+  blush: 'rgba(255,120,150,0.45)',
 } as const;
 
 /**
- * Ellie's moods, and the accent that goes with each.
- *
- * The accents are the same reserved status colours the brain state uses, so a
- * colour keeps one meaning across the whole app. `label` always ships beside the
- * colour — the mood is never carried by hue alone.
+ * Ellie's moods, the accent that goes with each, and the soft hero tint behind her.
+ * `label` always ships beside the colour — the mood is never carried by hue alone.
  */
 export const MoodPalette = {
-  content: { accent: '#0ca30c', label: 'Content' },
-  proud: { accent: '#0ca30c', label: 'Proud' },
-  watchful: { accent: '#fab219', label: 'Watchful' },
-  worried: { accent: '#d03b3b', label: 'Worried' },
-  sleepy: { accent: '#898781', label: 'Sleepy' },
+  content: { accent: '#14B88A', soft: '#DCF7EE', label: 'Content', emoji: '😺' },
+  proud: { accent: '#14B88A', soft: '#DCF7EE', label: 'Proud', emoji: '😸' },
+  watchful: { accent: '#F5A300', soft: '#FFF2D1', label: 'Watchful', emoji: '🙀' },
+  worried: { accent: '#FF5C70', soft: '#FFE7EA', label: 'Worried', emoji: '😿' },
+  sleepy: { accent: '#6C4CF5', soft: '#ECE6FF', label: 'Sleepy', emoji: '😴' },
 } as const;
 
+/** Hero gradient pairs per mood: top-left → bottom-right. */
+export const MoodGradient: Record<keyof typeof MoodPalette, [string, string]> = {
+  content: ['#7C5CFF', '#B57BFF'],
+  proud: ['#16C79A', '#6C4CF5'],
+  watchful: ['#FF9F1C', '#FF5C9A'],
+  worried: ['#FF5C70', '#B23CF0'],
+  sleepy: ['#5B49E8', '#2E9BF0'],
+};
+
 export type Mood = keyof typeof MoodPalette;
+
+/** Nunito: round terminals, friendly at every size. Two weights only. */
+export const Font = {
+  regular: 'Nunito_600SemiBold',
+  bold: 'Nunito_800ExtraBold',
+} as const;
 
 export const Spacing = {
   xs: 4,
@@ -115,9 +174,9 @@ export const Radius = {
   /** Data-end radius on bars and cells. */
   mark: 4,
   pill: 999,
-  control: 12,
-  card: 18,
-  sheet: 24,
+  control: 16,
+  card: 24,
+  sheet: 32,
 } as const;
 
 /**
@@ -134,23 +193,23 @@ export function innerRadius(outer: number, pad: number): number {
  */
 export const Type = {
   /** The count itself. Nothing else uses this. */
-  hero: { fontSize: 56, lineHeight: 60, fontWeight: '700' } as const,
-  display: { fontSize: 32, lineHeight: 38, fontWeight: '700' } as const,
-  title: { fontSize: 20, lineHeight: 26, fontWeight: '600' } as const,
-  heading: { fontSize: 16, lineHeight: 22, fontWeight: '600' } as const,
-  body: { fontSize: 15, lineHeight: 22, fontWeight: '400' } as const,
+  hero: { fontSize: 64, lineHeight: 68, fontFamily: Font.bold } as const,
+  display: { fontSize: 30, lineHeight: 36, fontFamily: Font.bold } as const,
+  title: { fontSize: 22, lineHeight: 28, fontFamily: Font.bold } as const,
+  heading: { fontSize: 17, lineHeight: 22, fontFamily: Font.bold } as const,
+  body: { fontSize: 15, lineHeight: 22, fontFamily: Font.regular } as const,
   /** Ellie's speech, one step up from body so she reads as a voice. */
-  speech: { fontSize: 16, lineHeight: 24, fontWeight: '400' } as const,
-  label: { fontSize: 13, lineHeight: 18, fontWeight: '500' } as const,
-  caption: { fontSize: 12, lineHeight: 17, fontWeight: '400' } as const,
+  speech: { fontSize: 16, lineHeight: 23, fontFamily: Font.regular } as const,
+  label: { fontSize: 14, lineHeight: 18, fontFamily: Font.bold } as const,
+  caption: { fontSize: 13, lineHeight: 18, fontFamily: Font.regular } as const,
   /** Axis ticks and table columns, where digits must line up. */
-  tick: { fontSize: 11, lineHeight: 15, fontWeight: '400' } as const,
+  tick: { fontSize: 11, lineHeight: 15, fontFamily: Font.regular } as const,
 } as const;
 
 /** Shared motion timings, so nothing animates at an arbitrary speed. */
 export const Motion = {
   /** Press feedback. */
-  pressScale: 0.96,
+  pressScale: 0.95,
   fast: 140,
   base: 220,
   slow: 420,

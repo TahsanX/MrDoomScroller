@@ -134,12 +134,33 @@ export function useInsights(days = 30) {
   return insights;
 }
 
+/**
+ * Settings are shared by every mounted screen. Tabs stay mounted, so without this a
+ * change on Today (say, pausing) would not show on Settings until a restart.
+ */
+let sharedSettings: Settings | null = null;
+const settingsSubscribers = new Set<(s: Settings | null) => void>();
+
+function publishSettings(next: Settings | null) {
+  sharedSettings = next;
+  settingsSubscribers.forEach((fn) => fn(next));
+}
+
 export function useSettings() {
-  const [settings, setSettings] = useState<Settings | null>(null);
+  const [settings, setSettings] = useState<Settings | null>(sharedSettings);
   const pending = useRef(false);
 
   useEffect(() => {
-    Core.getSettings().then(setSettings);
+    settingsSubscribers.add(setSettings);
+    Core.getSettings().then(publishSettings);
+    // The bubble's "Pause 30 min" writes settings while this app is closed.
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') Core.getSettings().then(publishSettings);
+    });
+    return () => {
+      settingsSubscribers.delete(setSettings);
+      subscription.remove();
+    };
   }, []);
 
   const update = useCallback(async (patch: Partial<Settings>) => {
@@ -148,15 +169,34 @@ export function useSettings() {
     try {
       // Optimistic, so a toggle does not wait on a round trip; the native result is
       // authoritative and overwrites it.
-      setSettings((current) => (current ? { ...current, ...patch } : current));
+      if (sharedSettings) publishSettings({ ...sharedSettings, ...patch });
       const next = await Core.setSettings(patch);
-      setSettings(next);
+      publishSettings(next);
     } finally {
       pending.current = false;
     }
   }, []);
 
   return { settings, update };
+}
+
+/**
+ * The current time, refreshed every half minute — enough for a timed pause to end
+ * on screen without anyone touching it.
+ */
+export function useNow(intervalMs = 30_000): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), intervalMs);
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') setNow(Date.now());
+    });
+    return () => {
+      clearInterval(id);
+      subscription.remove();
+    };
+  }, [intervalMs]);
+  return now;
 }
 
 export function isoDaysAgo(days: number): string {

@@ -160,9 +160,13 @@ class ScrollWiseCoreModule : Module() {
           debugLogging = patch.bool("debugLogging") ?: current.debugLogging,
           onboardingComplete = patch.bool("onboardingComplete") ?: current.onboardingComplete,
           healthyMax = patch.int("healthyMax") ?: current.healthyMax,
-          fatiguedMax = patch.int("fatiguedMax") ?: current.fatiguedMax
+          fatiguedMax = patch.int("fatiguedMax") ?: current.fatiguedMax,
+          pausedUntil = patch.long("pausedUntil")?.coerceAtLeast(0L) ?: current.pausedUntil
         )
         repository.putSettings(updated)
+        // The running service caches overlay and pause state; tell it now rather
+        // than on its next reconnect.
+        CounterBus.publishSettings(updated)
         CounterWidgetProvider.refreshAll(context)
         updated.toJs()
       }
@@ -256,7 +260,9 @@ class ScrollWiseCoreModule : Module() {
     "debugLogging" to debugLogging,
     "onboardingComplete" to onboardingComplete,
     "healthyMax" to healthyMax,
-    "fatiguedMax" to fatiguedMax
+    "fatiguedMax" to fatiguedMax,
+    // As a double: JS numbers are doubles, and the bridge is happiest saying so.
+    "pausedUntil" to pausedUntil.toDouble()
   )
 
   private fun brainStateFor(total: Int, settings: AppSettings): String = when {
@@ -293,6 +299,8 @@ class ScrollWiseCoreModule : Module() {
   // returns null rather than a default and the caller falls back to the current
   // value. JS numbers arrive as Double, hence the Number widening.
   private fun Map<String, Any>.int(key: String): Int? = (this[key] as? Number)?.toInt()
+
+  private fun Map<String, Any>.long(key: String): Long? = (this[key] as? Number)?.toLong()
 
   private fun Map<String, Any>.bool(key: String): Boolean? = this[key] as? Boolean
 

@@ -1,5 +1,6 @@
 package com.scrollwise.core
 
+import com.scrollwise.core.db.AppSettings
 import com.scrollwise.core.detect.TargetApp
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -24,7 +25,24 @@ object CounterBus {
     fun onLimitReached(appId: String, total: Int, limit: Int)
   }
 
+  /** The service caches settings; this tells it when the app has changed them. */
+  fun interface SettingsListener {
+    fun onSettingsChanged(settings: AppSettings)
+  }
+
   private val listeners = CopyOnWriteArrayList<Listener>()
+  private val settingsListeners = CopyOnWriteArrayList<SettingsListener>()
+
+  fun addSettingsListener(listener: SettingsListener) = settingsListeners.add(listener)
+
+  fun removeSettingsListener(listener: SettingsListener) = settingsListeners.remove(listener)
+
+  fun publishSettings(settings: AppSettings) {
+    for (listener in settingsListeners) {
+      runCatching { listener.onSettingsChanged(settings) }
+    }
+  }
+
   private val limitListeners = CopyOnWriteArrayList<LimitListener>()
 
   fun addListener(listener: Listener) = listeners.add(listener)

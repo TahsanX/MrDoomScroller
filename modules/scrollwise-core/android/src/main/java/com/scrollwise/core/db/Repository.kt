@@ -27,11 +27,13 @@ class Repository(context: Context) {
   /**
    * Commit one counted reel and return the new daily total.
    *
-   * Returns null when the app is switched off in settings — checked here rather than
-   * in the detector so the detector stays a pure function of the event stream.
+   * Returns null when the app is switched off in settings, or tracking is paused —
+   * checked here rather than in the detector so the detector stays a pure function
+   * of the event stream.
    */
   suspend fun commitReel(app: TargetApp, timestamp: Long, dwellMs: Int, isAd: Boolean): Int? {
     val settings = settings()
+    if (settings.isPaused(timestamp)) return null
     if (!settings.enabledApps.split(',').map(String::trim).contains(app.id)) return null
     return stats.commitReel(Dates.isoDate(timestamp), app.id, timestamp, dwellMs, isAd)
   }

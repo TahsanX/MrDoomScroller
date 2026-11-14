@@ -9,7 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
   entities = [DailyStats::class, DailyAppStats::class, ReelEvent::class, AppSettings::class],
-  version = 2,
+  version = 3,
   exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -30,6 +30,13 @@ abstract class AppDatabase : RoomDatabase() {
       }
     }
 
+    /** Version 3 adds the tracking pause. Additive, like 1 → 2. */
+    val MIGRATION_2_3 = object : Migration(2, 3) {
+      override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE app_settings ADD COLUMN pausedUntil INTEGER NOT NULL DEFAULT 0")
+      }
+    }
+
     @Volatile
     private var instance: AppDatabase? = null
 
@@ -45,7 +52,7 @@ abstract class AppDatabase : RoomDatabase() {
           AppDatabase::class.java,
           NAME
         )
-          .addMigrations(MIGRATION_1_2)
+          .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
           .build()
           .also { instance = it }
       }

@@ -72,7 +72,15 @@ export type Settings = {
   onboardingComplete: boolean;
   healthyMax: number;
   fatiguedMax: number;
+  /**
+   * Epoch millis until which nothing is counted and the bubble stays hidden.
+   * 0 = not paused; `PAUSED_INDEFINITELY` = until the user resumes.
+   */
+  pausedUntil: number;
 };
+
+/** Mirrors `AppSettings.PAUSED_INDEFINITELY` on the Kotlin side. */
+export const PAUSED_INDEFINITELY = 8_640_000_000_000_000;
 
 export type SettingsPatch = Partial<Settings>;
 

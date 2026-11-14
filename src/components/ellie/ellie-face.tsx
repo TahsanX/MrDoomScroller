@@ -34,19 +34,19 @@ export const EllieFace = memo(function EllieFace({ mood, size = 150, blink = tru
       {/* Chest, behind the head, so she is a cat rather than a floating head. */}
       <Path
         d="M44 118 Q44 96 70 96 Q96 96 96 118 Q96 126 70 126 Q44 126 44 118 Z"
-        fill={Ellie.furShade}
+        fill={Ellie.furShade} stroke={Ellie.outline} strokeWidth={3} strokeLinejoin="round"
       />
 
       <G rotation={-ear} origin="44, 52">
-        <Polygon points="33,66 34,20 60,44" fill={Ellie.fur} />
+        <Polygon points="33,66 34,20 60,44" fill={Ellie.fur} stroke={Ellie.outline} strokeWidth={3} strokeLinejoin="round" />
         <Polygon points="36,50 38,30 52,44" fill={Ellie.pink} />
       </G>
       <G rotation={ear} origin="96, 52">
-        <Polygon points="107,66 106,20 80,44" fill={Ellie.fur} />
+        <Polygon points="107,66 106,20 80,44" fill={Ellie.fur} stroke={Ellie.outline} strokeWidth={3} strokeLinejoin="round" />
         <Polygon points="104,50 102,30 88,44" fill={Ellie.pink} />
       </G>
 
-      <Ellipse cx="70" cy="74" rx="42" ry="37" fill={Ellie.fur} />
+      <Ellipse cx="70" cy="74" rx="42" ry="37" fill={Ellie.fur} stroke={Ellie.outline} strokeWidth={3} strokeLinejoin="round" />
 
       {/* Forehead stripes — what makes her read as a tabby rather than a blob. */}
       <Path d="M62 42 L66 54" stroke={Ellie.furShade} strokeWidth="3.5" strokeLinecap="round" />

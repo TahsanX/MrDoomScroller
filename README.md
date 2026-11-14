@@ -434,3 +434,24 @@ guessed wrong:
 
 The implementation here is this project's own: the fingerprint, the hashing, the
 geometric and action-column fallbacks, and the arrival rule are not copied from it.
+
+### Facebook: why the column test is strict
+
+Facebook gives its Reels player no stable view ids, so it is found by its
+like/comment/share stack. The first version accepted any three action-labelled nodes
+in one edge column, and also let the pager-shape test run — and both miscounted the
+News Feed: one tall post filling the screen looks like a pager, and three short posts
+stack three "Like" buttons into a column. Re-reading the same APK's Facebook detector
+showed why it did not have this problem; it requires, all at once, that the column's
+labels carry counts, that they name at least two different actions, that they are
+tightly aligned, and that a full-width described media node sits behind them. It also
+identifies a Facebook reel by author name and the start of the caption rather than
+every label on screen. [`EdgeColumn`](modules/scrollwise-core/android/src/main/java/com/scrollwise/core/detect/EdgeColumn.kt)
+applies those principles with this project's own thresholds, and the Facebook profile
+turns the shape fallback off. Unit tests cover the feed cases that used to pass.
+
+## Credits
+
+Sticker art is [Twemoji](https://github.com/twitter/twemoji) 14.0.2 by Twitter, Inc.
+and other contributors, licensed [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+The SVGs are in `assets/stickers/svg`; `node scripts/make-stickers.mjs` renders the PNGs.

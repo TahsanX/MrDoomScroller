@@ -4,6 +4,7 @@ import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withRepeat,
   withSequence,
   withSpring,
@@ -11,10 +12,15 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 
+import { GradientCard } from '@/components/ds-ui';
+import { Emoji } from '@/components/emoji';
 import {
   Ellie,
+  Font,
   Ink,
+  Lift,
   Motion,
+  MoodGradient,
   MoodPalette,
   Radius,
   Spacing,
@@ -25,91 +31,140 @@ import {
 import { EllieFace } from './ellie-face';
 
 /**
- * Ellie, her tail, and whatever she currently has to say.
+ * The hero: a candy gradient card with today's count on the left and Ellie on the
+ * right, bobbing and flicking her tail, then her speech bubble underneath.
  *
- * The motion is deliberately small — a breath, a tail, a blink. She has to survive
- * being looked at every day, and anything bouncier would wear out in a week.
+ * The gradient follows her mood, so the whole card warms up as the day gets heavier
+ * — but the mood is also written in the chip, never carried by colour alone.
  */
 export function EllieHero({
   mood,
   line,
   total,
+  limit = 0,
+  streak = 0,
   onPress,
 }: {
   mood: Mood;
   line: string;
   total: number;
+  limit?: number;
+  streak?: number;
   onPress?: () => void;
 }) {
   const palette = MoodPalette[mood];
-  const breath = useSharedValue(0);
+  const bob = useSharedValue(0);
   const tail = useSharedValue(0);
   const countPop = useSharedValue(0);
+  const fill = useSharedValue(0);
 
   // Slow when she is calm, quicker when she is not — the rhythm carries the mood as
-  // well as the colour does, which matters if you cannot separate the two hues.
-  const period = mood === 'sleepy' ? 3600 : mood === 'worried' ? 1400 : 2600;
+  // well as the colour does.
+  const period = mood === 'sleepy' ? 3000 : mood === 'worried' ? 1100 : 1900;
 
   useEffect(() => {
-    breath.value = withRepeat(
+    bob.value = withRepeat(
       withTiming(1, { duration: period, easing: Easing.inOut(Easing.sin) }),
       -1,
       true
     );
     tail.value = withRepeat(
-      withTiming(1, { duration: period * 1.3, easing: Easing.inOut(Easing.sin) }),
+      withTiming(1, { duration: period * 0.8, easing: Easing.inOut(Easing.sin) }),
       -1,
       true
     );
-  }, [period, breath, tail]);
+  }, [period, bob, tail]);
 
-  // A small kick each time the number changes, so the count feels like it landed.
+  // A bouncy kick each time the number changes, so the count feels like it landed.
   useEffect(() => {
     countPop.value = withSequence(
-      withSpring(1, { damping: 9, stiffness: 320 }),
-      withSpring(0, { damping: 14, stiffness: 220 })
+      withSpring(1, { damping: 7, stiffness: 340 }),
+      withSpring(0, { damping: 12, stiffness: 220 })
     );
   }, [total, countPop]);
 
-  const bodyStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: 1 + breath.value * 0.022 }, { translateY: breath.value * -2 }],
-  }));
+  const fraction = limit > 0 ? Math.min(1, total / limit) : 0;
+  useEffect(() => {
+    fill.value = withDelay(250, withSpring(fraction, { damping: 16, stiffness: 90 }));
+  }, [fraction, fill]);
 
+  const ellieStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: -6 * bob.value },
+      { rotate: `${(bob.value - 0.5) * 4}deg` },
+    ],
+  }));
   const tailStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${-14 + tail.value * 28}deg` }],
+    transform: [{ rotate: `${-18 + tail.value * 36}deg` }],
   }));
-
   const countStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: 1 + countPop.value * 0.12 }],
+    transform: [{ scale: 1 + countPop.value * 0.14 }],
   }));
+  const fillStyle = useAnimatedStyle(() => ({ width: `${fill.value * 100}%` }));
+
+  const over = limit > 0 && total > limit;
 
   return (
-    <View style={styles.wrap}>
-      <View style={styles.stage}>
-        {/* A soft halo in the mood colour, behind her. */}
-        <View style={[styles.halo, { backgroundColor: palette.accent }]} />
+    <View>
+      <GradientCard colors={MoodGradient[mood]}>
+        <View style={styles.chips}>
+          <View style={styles.chip}>
+            <Emoji char={palette.emoji} size={18} />
+            <Text style={styles.chipText}>Ellie is {palette.label.toLowerCase()}</Text>
+          </View>
+          {streak > 0 ? (
+            <View style={[styles.chip, styles.streakChip]}>
+              <Emoji char="🔥" size={18} />
+              <Text style={[styles.chipText, styles.streakText]}>{streak}-day streak</Text>
+            </View>
+          ) : null}
+        </View>
 
-        <Animated.View style={[styles.tail, tailStyle]}>
-          <Svg width={54} height={86} viewBox="0 0 54 86">
-            <Path
-              d="M12 84 Q6 56 20 36 Q34 16 44 24 Q50 29 44 36 Q36 28 28 42 Q18 60 24 84 Z"
-              fill={Ellie.fur}
-            />
-            <Path d="M30 30 Q38 22 43 27" stroke={Ellie.furShade} strokeWidth="4" strokeLinecap="round" fill="none" />
-          </Svg>
-        </Animated.View>
+        <View style={styles.body}>
+          <View style={styles.countCol}>
+            <Text style={styles.kicker}>Today</Text>
+            <Animated.View style={[styles.countWrap, countStyle]}>
+              <Text style={styles.count} adjustsFontSizeToFit numberOfLines={1}>
+                {total}
+              </Text>
+            </Animated.View>
+            <Text style={styles.unit}>{total === 1 ? 'reel scrolled' : 'reels scrolled'}</Text>
 
-        <Animated.View style={bodyStyle}>
-          <EllieFace mood={mood} size={168} />
-        </Animated.View>
-      </View>
+            {limit > 0 ? (
+              <View style={styles.meter}>
+                <View style={styles.track}>
+                  <Animated.View style={[styles.fill, fillStyle]} />
+                </View>
+                <Text style={styles.meterText}>
+                  {over ? `${total - limit} over your ${limit}` : `${limit - total} left of ${limit}`}
+                </Text>
+              </View>
+            ) : (
+              <Text style={styles.meterText}>No daily cap yet</Text>
+            )}
+          </View>
 
-      <Animated.View style={[styles.countRow, countStyle]}>
-        <Text style={styles.count}>{total}</Text>
-        <Text style={styles.countUnit}>{total === 1 ? 'reel today' : 'reels today'}</Text>
-      </Animated.View>
+          <View style={styles.stage}>
+            <View style={styles.halo} />
+            <Animated.View style={[styles.tail, tailStyle]}>
+              <Svg width={44} height={70} viewBox="0 0 54 86">
+                <Path
+                  d="M12 84 Q6 56 20 36 Q34 16 44 24 Q50 29 44 36 Q36 28 28 42 Q18 60 24 84 Z"
+                  fill={Ellie.fur}
+                  stroke={Ellie.outline}
+                  strokeWidth={3}
+                  strokeLinejoin="round"
+                />
+              </Svg>
+            </Animated.View>
+            <Animated.View style={ellieStyle}>
+              <EllieFace mood={mood} size={132} />
+            </Animated.View>
+          </View>
+        </View>
+      </GradientCard>
 
-      <SpeechBubble accent={palette.accent} moodLabel={palette.label} onPress={onPress}>
+      <SpeechBubble accent={palette.accent} onPress={onPress}>
         {line}
       </SpeechBubble>
     </View>
@@ -119,12 +174,10 @@ export function EllieHero({
 function SpeechBubble({
   children,
   accent,
-  moodLabel,
   onPress,
 }: {
   children: string;
   accent: string;
-  moodLabel: string;
   onPress?: () => void;
 }) {
   const press = useSharedValue(0);
@@ -139,19 +192,15 @@ function SpeechBubble({
         accessibilityHint={onPress ? 'Opens Ellie' : undefined}
         disabled={!onPress}
         onPress={onPress}
-        onPressIn={() => (press.value = withTiming(1, { duration: Motion.fast }))}
-        onPressOut={() => (press.value = withTiming(0, { duration: Motion.fast }))}>
-        {/* The notch that points back at her. */}
+        onPressIn={() => (press.value = withSpring(1, { damping: 18, stiffness: 420 }))}
+        onPressOut={() => (press.value = withSpring(0, { damping: 9, stiffness: 300 }))}>
+        {/* The notch points back up at her, on the right. */}
         <View style={styles.notchRow}>
-          <View style={[styles.notch, { borderBottomColor: Surface.card }]} />
+          <View style={styles.notch} />
         </View>
-        <View style={styles.bubble}>
-          <View style={styles.bubbleHead}>
-            <View style={[styles.moodDot, { backgroundColor: accent }]} />
-            <Text style={styles.moodLabel}>Ellie · {moodLabel}</Text>
-          </View>
+        <View style={[styles.bubble, { borderLeftColor: accent }]}>
           <Text style={styles.bubbleText}>{children}</Text>
-          {onPress ? <Text style={styles.bubbleCta}>Tap to ask her something</Text> : null}
+          {onPress ? <Text style={[styles.bubbleCta, { color: accent }]}>Ask Ellie something →</Text> : null}
         </View>
       </Pressable>
     </Animated.View>
@@ -159,54 +208,81 @@ function SpeechBubble({
 }
 
 const styles = StyleSheet.create({
-  wrap: { alignItems: 'center' },
-  stage: {
-    width: 220,
-    height: 190,
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  chip: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    borderRadius: Radius.pill,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
   },
+  chipText: { ...Type.caption, fontFamily: Font.bold, color: '#FFFFFF' },
+  streakChip: { backgroundColor: '#FFFFFF' },
+  streakText: { color: '#E8590C' },
+
+  body: { flexDirection: 'row', alignItems: 'flex-end', marginTop: Spacing.md },
+  countCol: { flex: 1, paddingBottom: Spacing.xs },
+  kicker: { ...Type.label, color: 'rgba(255,255,255,0.85)' },
+  countWrap: { alignSelf: 'flex-start' },
+  count: {
+    ...Type.hero,
+    color: '#FFFFFF',
+    fontVariant: ['tabular-nums'],
+    textShadowColor: 'rgba(0,0,0,0.12)',
+    textShadowOffset: { width: 0, height: 3 },
+    textShadowRadius: 0,
+  },
+  unit: { ...Type.caption, color: 'rgba(255,255,255,0.9)', marginTop: -4 },
+
+  meter: { marginTop: Spacing.md },
+  track: {
+    height: 10,
+    borderRadius: Radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.28)',
+    overflow: 'hidden',
+    marginBottom: Spacing.xs,
+  },
+  fill: { height: '100%', backgroundColor: '#FFFFFF', borderRadius: Radius.pill },
+  meterText: { ...Type.tick, fontFamily: Font.bold, color: 'rgba(255,255,255,0.92)', marginTop: 2 },
+
+  stage: { width: 140, height: 150, alignItems: 'center', justifyContent: 'flex-end' },
   halo: {
     position: 'absolute',
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    opacity: 0.1,
-    top: 18,
+    width: 128,
+    height: 128,
+    borderRadius: 64,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    bottom: 10,
   },
   tail: {
     position: 'absolute',
-    right: 6,
-    bottom: 2,
+    right: 0,
+    bottom: 4,
     // Rotate about the base of the tail, where it meets her.
     transformOrigin: 'bottom center',
   },
 
-  countRow: { alignItems: 'center', marginTop: Spacing.sm },
-  count: { ...Type.hero, color: Ink.primary },
-  countUnit: { ...Type.caption, color: Ink.muted, marginTop: -2 },
-
-  bubbleWrap: { alignSelf: 'stretch', marginTop: Spacing.lg },
-  notchRow: { alignItems: 'center' },
+  bubbleWrap: { marginTop: Spacing.sm },
+  notchRow: { alignItems: 'flex-end', paddingRight: 64 },
   notch: {
     width: 0,
     height: 0,
-    borderLeftWidth: 9,
-    borderRightWidth: 9,
-    borderBottomWidth: 9,
+    borderLeftWidth: 10,
+    borderRightWidth: 10,
+    borderBottomWidth: 10,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
+    borderBottomColor: Surface.card,
   },
   bubble: {
     backgroundColor: Surface.card,
     borderRadius: Radius.card,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Surface.border,
+    borderLeftWidth: 5,
     padding: Spacing.lg,
+    ...Lift,
   },
-  bubbleHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
-  moodDot: { width: 7, height: 7, borderRadius: 4 },
-  moodLabel: { ...Type.caption, color: Ink.muted, letterSpacing: 0.3 },
   bubbleText: { ...Type.speech, color: Ink.primary },
-  bubbleCta: { ...Type.caption, color: Ink.muted, marginTop: Spacing.md },
+  bubbleCta: { ...Type.caption, fontFamily: Font.bold, marginTop: Spacing.sm },
 });

@@ -1,28 +1,45 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Body, Panel, Pressable96, Row, Screen, SectionTitle } from '@/components/ds-ui';
+import { Body, Panel, Pressable96, Row, Screen, SectionTitle, shade, Sticker } from '@/components/ds-ui';
 import { LimitRing } from '@/components/limit-ring';
-import { Ink, Radius, Spacing, Surface, Type } from '@/constants/theme';
+import {
+  AppLabels,
+  AppSticker,
+  Candy,
+  Font,
+  Ink,
+  Radius,
+  SeriesSoft,
+  Spacing,
+  Surface,
+  Type,
+} from '@/constants/theme';
 import { useSettings, useToday } from '@/hooks/use-scrollwise';
 import type { BlockMode } from '../../../modules/scrollwise-core/src';
 
 const DAILY_OPTIONS = [0, 20, 40, 60, 100];
 const SESSION_OPTIONS = [0, 10, 20, 30, 50];
 
-const MODES: { value: BlockMode; title: string; subtitle: string }[] = [
+const MODES: { value: BlockMode; title: string; subtitle: string; emoji: string; tint: string }[] = [
   {
     value: 'NOTIFY',
+    emoji: '🔔',
+    tint: Candy.skySoft,
     title: 'Tell me',
     subtitle: 'A notification when you pass the limit. Nothing else happens.',
   },
   {
     value: 'NUDGE',
+    emoji: '✋',
+    tint: Candy.sunSoft,
     title: 'Interrupt me',
     subtitle:
       'A full-screen panel with the number, a minute of snooze, and a way out. You can dismiss it.',
   },
   {
     value: 'HARD',
+    emoji: '🚪',
+    tint: Candy.coralSoft,
     title: 'Close the app',
     subtitle:
       'The panel, plus sending you to the home screen — and again if you come back. Still escapable by turning the service off, which this app will not hide from you.',
@@ -43,9 +60,10 @@ export default function Limits() {
         </Panel>
 
         <Panel>
-          <SectionTitle>Daily cap</SectionTitle>
+          <SectionTitle>🎯 Daily cap</SectionTitle>
           <Body muted>Counted across all five apps.</Body>
           <Chips
+            color={Candy.violet}
             options={DAILY_OPTIONS}
             value={settings.dailyLimit}
             onChange={(dailyLimit) => update({ dailyLimit })}
@@ -53,13 +71,14 @@ export default function Limits() {
         </Panel>
 
         <Panel>
-          <SectionTitle>Per sitting</SectionTitle>
+          <SectionTitle>🛋️ Per sitting</SectionTitle>
           <Body muted>
             A sitting ends after five minutes away from a feed. A smaller number here
             tends to stick better than a daily total, because it lands while you are
             still in the habit rather than at the end of the day.
           </Body>
           <Chips
+            color={Candy.pink}
             options={SESSION_OPTIONS}
             value={settings.sessionLimit}
             onChange={(sessionLimit) => update({ sessionLimit })}
@@ -67,7 +86,7 @@ export default function Limits() {
         </Panel>
 
         <Panel>
-          <SectionTitle>What happens at the limit</SectionTitle>
+          <SectionTitle>🚦 What happens at the limit</SectionTitle>
           {MODES.map((mode) => (
             <Pressable96
               key={mode.value}
@@ -75,24 +94,26 @@ export default function Limits() {
               accessibilityLabel={mode.title}
               accessibilityState={{ selected: settings.blockMode === mode.value }}
               onPress={() => update({ blockMode: mode.value })}>
-              <View style={styles.modeRow}>
-                <View
-                  style={[
-                    styles.radio,
-                    settings.blockMode === mode.value && styles.radioOn,
-                  ]}
-                />
+              <View
+                style={[
+                  styles.modeRow,
+                  settings.blockMode === mode.value && { backgroundColor: mode.tint },
+                ]}>
+                <Sticker emoji={mode.emoji} tint={mode.tint} size={44} />
                 <View style={styles.modeText}>
                   <Text style={styles.modeTitle}>{mode.title}</Text>
                   <Text style={styles.modeSubtitle}>{mode.subtitle}</Text>
                 </View>
+                <View
+                  style={[styles.radio, settings.blockMode === mode.value && styles.radioOn]}
+                />
               </View>
             </Pressable96>
           ))}
         </Panel>
 
-        <Panel>
-          <SectionTitle>Why there is no unbreakable block</SectionTitle>
+        <Panel tint={Candy.violetSoft}>
+          <SectionTitle>🤝 Why there is no unbreakable block</SectionTitle>
           <Body muted>
             There is no honest way to build one. Android removes overlays over system
             dialogs, the back gesture and the notification shade keep working, and you
@@ -104,7 +125,7 @@ export default function Limits() {
         </Panel>
 
         <Panel>
-          <SectionTitle>Counted apps</SectionTitle>
+          <SectionTitle>📱 Counted apps</SectionTitle>
           <Body muted>
             Switch an app off and its swipes stop being counted from that moment.
           </Body>
@@ -113,7 +134,9 @@ export default function Limits() {
             (appId) => (
               <Row
                 key={appId}
-                title={appId.charAt(0).toUpperCase() + appId.slice(1)}
+                emoji={AppSticker[appId]}
+                tint={SeriesSoft[appId]}
+                title={AppLabels[appId]}
                 value={settings.enabledApps.includes(appId)}
                 onToggle={(on) =>
                   update({
@@ -135,10 +158,12 @@ function Chips({
   options,
   value,
   onChange,
+  color,
 }: {
   options: number[];
   value: number;
   onChange: (next: number) => void;
+  color: string;
 }) {
   return (
     <View style={styles.chipRow}>
@@ -148,7 +173,10 @@ function Chips({
           accessibilityRole="radio"
           accessibilityState={{ selected: value === option }}
           onPress={() => onChange(option)}
-          style={[styles.chip, value === option && styles.chipOn]}>
+          style={[
+            styles.chip,
+            value === option && { backgroundColor: color, borderBottomColor: shade(color) },
+          ]}>
           <Text style={[styles.chipText, value === option && styles.chipTextOn]}>
             {option === 0 ? 'Off' : option}
           </Text>
@@ -159,33 +187,41 @@ function Chips({
 }
 
 const styles = StyleSheet.create({
-  content: { padding: Spacing.lg, paddingBottom: Spacing.xxl },
+  // Clears the floating tab bar.
+  content: { padding: Spacing.lg, paddingBottom: 120 },
   spacer: { height: Spacing.sm },
   chipRow: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.lg },
   chip: {
     flex: 1,
-    paddingVertical: Spacing.md,
+    minHeight: 48,
+    justifyContent: 'center',
     borderRadius: Radius.control,
     backgroundColor: Surface.raised,
     alignItems: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Surface.border,
+    borderBottomWidth: 4,
+    borderBottomColor: Surface.axis,
   },
-  chipOn: { backgroundColor: Ink.primary, borderColor: Ink.primary },
-  chipText: { ...Type.label, color: Ink.secondary, fontWeight: '600' },
-  chipTextOn: { color: Surface.page },
+  chipText: { ...Type.label, color: Ink.secondary },
+  chipTextOn: { color: '#FFFFFF' },
 
-  modeRow: { flexDirection: 'row', paddingVertical: Spacing.md, gap: Spacing.md },
-  radio: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 2,
-    borderColor: Ink.muted,
-    marginTop: 2,
+  modeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    gap: Spacing.md,
+    borderRadius: Radius.control + 4,
+    marginTop: Spacing.xs,
   },
-  radioOn: { borderColor: Ink.primary, backgroundColor: Ink.primary },
+  radio: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 3,
+    borderColor: Surface.axis,
+    backgroundColor: Surface.card,
+  },
+  radioOn: { borderColor: Candy.violet, borderWidth: 7 },
   modeText: { flex: 1 },
-  modeTitle: { ...Type.body, color: Ink.primary, fontWeight: '600' },
-  modeSubtitle: { ...Type.caption, color: Ink.muted, marginTop: 3 },
+  modeTitle: { ...Type.label, fontSize: 15, color: Ink.primary, fontFamily: Font.bold },
+  modeSubtitle: { ...Type.caption, color: Ink.muted, marginTop: 2 },
 });

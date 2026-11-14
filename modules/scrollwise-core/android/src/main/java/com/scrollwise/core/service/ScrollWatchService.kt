@@ -12,6 +12,7 @@ import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import androidx.core.content.ContextCompat
 import com.scrollwise.core.CounterBus
+import com.scrollwise.core.db.AppSettings
 import com.scrollwise.core.db.Repository
 import com.scrollwise.core.detect.DetectionProfile
 import com.scrollwise.core.detect.DetectorEvent
@@ -83,6 +84,17 @@ class ScrollWatchService : AccessibilityService() {
   @Volatile
   private var debugLogging: Boolean = false
 
+  /**
+   * Mirror of [AppSettings.pausedUntil], so the hot path can skip a paused reel
+   * without a database read. Kept fresh by [settingsListener].
+   */
+  @Volatile
+  private var pausedUntil: Long = 0
+
+  private fun isPaused(): Boolean = pausedUntil > System.currentTimeMillis()
+
+  private val settingsListener = CounterBus.SettingsListener { settings -> applySettings(settings) }
+
   // Probe-thread state.
   private var scrolledSinceProbe = false
   private var anyScrollSinceProbe = false
@@ -128,8 +140,19 @@ class ScrollWatchService : AccessibilityService() {
         writeScope.launch {
           repository.putSettings(repository.settings().copy(overlayX = x, overlayY = y))
         }
+      },
+      onPauseRequested = { minutes ->
+        writeScope.launch {
+          val until = System.currentTimeMillis() + minutes * 60_000L
+          val updated = repository.settings().copy(pausedUntil = until)
+          repository.putSettings(updated)
+          // Tells the open app too, if there is one, and lands back in applySettings.
+          CounterBus.publishSettings(updated)
+          CounterWidgetProvider.refreshAll(this@ScrollWatchService)
+        }
       }
     )
+    CounterBus.addSettingsListener(settingsListener)
 
     probeThread = HandlerThread("ScrollWise-probe").also { it.start() }
     probeHandler = Handler(probeThread.looper)
@@ -150,10 +173,8 @@ class ScrollWatchService : AccessibilityService() {
     MaintenanceWorker.schedule(this)
 
     writeScope.launch {
-      val settings = repository.settings()
-      debugLogging = settings.debugLogging
       todayTotal = repository.todayTotal()
-      overlay.configure(settings.overlayEnabled, settings.overlayX, settings.overlayY)
+      applySettings(repository.settings())
     }
 
     Log.i(TAG, "Connected. Watching ${TargetApp.allPackages.size} packages.")
@@ -297,6 +318,19 @@ class ScrollWatchService : AccessibilityService() {
     }
   }
 
+  /** Anything the service caches from settings is refreshed here, and only here. */
+  private fun applySettings(settings: AppSettings) {
+    debugLogging = settings.debugLogging
+    pausedUntil = settings.pausedUntil
+    overlay.configure(
+      enabled = settings.overlayEnabled,
+      pausedUntil = settings.pausedUntil,
+      x = settings.overlayX,
+      y = settings.overlayY,
+      dailyLimit = settings.dailyLimit
+    )
+  }
+
   private fun endSitting() {
     stopPolling()
     probeHandler.removeCallbacks(probeRunnable)
@@ -308,6 +342,8 @@ class ScrollWatchService : AccessibilityService() {
     for (event in events) {
       when (event) {
         is DetectorEvent.SurfaceEntered -> {
+          // Paused means invisible as well as uncounted: no bubble, no limit panel.
+          if (isPaused()) continue
           overlay.show(todayTotal)
           // In hard mode, re-opening a feed after the cap must be caught here: the
           // user never gets as far as another swipe.
@@ -323,7 +359,7 @@ class ScrollWatchService : AccessibilityService() {
 
         is DetectorEvent.ReelViewed -> onReelViewed(event)
 
-        is DetectorEvent.FinalDwell -> writeScope.launch {
+        is DetectorEvent.FinalDwell -> if (!isPaused()) writeScope.launch {
           repository.addFeedTime(event.timestamp, event.dwellMs)
         }
       }
@@ -331,6 +367,7 @@ class ScrollWatchService : AccessibilityService() {
   }
 
   private fun onReelViewed(event: DetectorEvent.ReelViewed) {
+    if (isPaused()) return
     if (event.timestamp - lastReelAt > LimitEnforcer.SESSION_GAP_MS) sessionCount = 0
     lastReelAt = event.timestamp
     sessionCount += 1
@@ -378,6 +415,7 @@ class ScrollWatchService : AccessibilityService() {
   }
 
   override fun onDestroy() {
+    CounterBus.removeSettingsListener(settingsListener)
     screenOffReceiver?.let { runCatching { unregisterReceiver(it) } }
     screenOffReceiver = null
     if (::overlay.isInitialized) overlay.destroy()

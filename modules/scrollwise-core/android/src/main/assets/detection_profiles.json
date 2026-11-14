@@ -39,8 +39,10 @@
     "experimental": true
   },
   {
-    "_note": "Facebook exposes no stable ids for Reels. The edge action column (like/comment/share stacked at the right) carries detection; the News Feed lays the same buttons out in a row and so does not match.",
+    "_note": "Facebook exposes no stable ids for Reels. Detection is the strict edge action column (EdgeColumn): counted like/comment/share labels stacked at the edge, at least two different actions, over a full-width described media node. The pager-shape fallback is off because the News Feed looks like a pager whenever one tall post fills the screen. Approach informed by studying BrainPal (com.brainrot.android); thresholds are our own.",
     "appId": "facebook",
+    "shapeFallback": false,
+    "strictActionColumn": true,
     "surfaceIds": [],
     "pauseIds": [],
     "identityIds": [],

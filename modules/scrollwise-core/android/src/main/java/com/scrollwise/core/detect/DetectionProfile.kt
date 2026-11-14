@@ -55,6 +55,17 @@ data class DetectionProfile(
   /** Extra tokens to drop before fingerprinting, on top of [Fingerprint]'s list. */
   val genericTokens: Set<String> = emptySet(),
   /**
+   * Whether the geometric pager test may declare a short-form feed. Off for apps
+   * whose ordinary feed can look like a pager — Facebook's News Feed does whenever
+   * one tall post fills the screen, which counted every post as a reel.
+   */
+  val shapeFallback: Boolean = true,
+  /**
+   * Use [EdgeColumn]'s strict rules (counts on the buttons, two different actions,
+   * a full-screen media node) instead of the loose column test.
+   */
+  val strictActionColumn: Boolean = false,
+  /**
    * Not yet verified on a device. The UI says so, and the calibration screen is how
    * a user finds out how far off it is.
    */
@@ -101,6 +112,8 @@ data class DetectionProfile(
         genericTokens = json.stringList("genericTokens", emptyList())
           .map { it.lowercase() }
           .toSet(),
+        shapeFallback = json.optBoolean("shapeFallback", fallback.shapeFallback),
+        strictActionColumn = json.optBoolean("strictActionColumn", fallback.strictActionColumn),
         experimental = json.optBoolean("experimental", fallback.experimental)
       )
     }

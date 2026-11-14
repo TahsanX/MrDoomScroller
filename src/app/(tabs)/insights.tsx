@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppBreakdown, Card, HourHeatmap, WeekBars } from '@/components/charts';
 import { Body, Panel, Screen, SectionTitle, Stagger } from '@/components/ds-ui';
-import { Ink, SequentialBase, Spacing, Type } from '@/constants/theme';
+import { Candy, Font, Ink, SequentialBase, Spacing, Type } from '@/constants/theme';
 import { formatDuration, isoDaysAgo, useInsights, useWeek } from '@/hooks/use-scrollwise';
 import * as Core from '../../../modules/scrollwise-core/src';
 import type { DayTotal, RangeResult } from '../../../modules/scrollwise-core/src';
@@ -34,7 +34,7 @@ export default function History() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content}>
-        <Card title="Last 30 days" subtitle={`${range.days.length} days with activity`}>
+        <Card title="Last 30 days" emoji="✨" subtitle={`${range.days.length} days with activity`}>
           <View style={styles.statRow}>
             <Stat label="Total reels" value={`${total}`} />
             <Stat
@@ -72,7 +72,7 @@ export default function History() {
         ) : null}
 
         {/* One series over 30 days: a dense bar strip reads better than 30 labelled bars. */}
-        <Card title="Daily totals" subtitle="Oldest to newest">
+        <Card title="Daily totals" emoji="📈" subtitle="Oldest to newest">
           {range.days.length === 0 ? (
             <Body muted>Nothing recorded yet.</Body>
           ) : (
@@ -97,7 +97,7 @@ export default function History() {
           )}
         </Card>
 
-        <AppBreakdown apps={range.apps} />
+        <AppBreakdown apps={range.apps} subtitle="Last 30 days" />
         <HourHeatmap hours={insights.hours} />
 
         <Panel>
@@ -123,14 +123,15 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: Spacing.lg, paddingBottom: Spacing.xxl },
+  // Clears the floating tab bar.
+  content: { padding: Spacing.lg, paddingBottom: 120 },
   statRow: { flexDirection: 'row', gap: Spacing.lg },
   stat: { flex: 1 },
-  statValue: { ...Type.title, color: Ink.primary, fontVariant: ['tabular-nums'] },
+  statValue: { ...Type.title, color: Candy.violet, fontVariant: ['tabular-nums'] },
   statLabel: { ...Type.tick, color: Ink.muted, marginTop: 2 },
   extreme: { ...Type.body, color: Ink.secondary, marginTop: Spacing.xs },
-  extremeValue: { color: Ink.primary, fontWeight: '600' },
+  extremeValue: { color: Ink.primary, fontFamily: Font.bold },
   sparkRow: { flexDirection: 'row', alignItems: 'flex-end', height: 90, gap: 1 },
   sparkColumn: { flex: 1, justifyContent: 'flex-end' },
-  sparkBar: { width: '100%', borderTopLeftRadius: 2, borderTopRightRadius: 2 },
+  sparkBar: { width: '100%', borderRadius: 3 },
 });

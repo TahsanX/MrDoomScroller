@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { Alert, ScrollView, Share, StyleSheet } from 'react-native';
 
 import { Body, Button, Panel, Row, Screen, SectionTitle } from '@/components/ds-ui';
-import { Spacing } from '@/constants/theme';
+import { TrackingModePicker } from '@/components/tracking-mode';
+import { Candy, Spacing } from '@/constants/theme';
 import { usePermissions, useSettings, useToday } from '@/hooks/use-scrollwise';
 import * as Core from '../../../modules/scrollwise-core/src';
 
@@ -55,9 +56,18 @@ export default function SettingsScreen() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content}>
+        <TrackingModePicker
+          settings={settings}
+          update={update}
+          overlayGranted={overlayGranted}
+          onNeedOverlay={Core.openOverlaySettings}
+        />
+
         <Panel>
-          <SectionTitle>Permissions</SectionTitle>
+          <SectionTitle>🔑 Permissions</SectionTitle>
           <Row
+            emoji="👀"
+            tint={Candy.mintSoft}
             title="Counting service"
             subtitle={
               serviceEnabled
@@ -69,6 +79,8 @@ export default function SettingsScreen() {
             badgeTone={serviceEnabled ? 'good' : 'bad'}
           />
           <Row
+            emoji="🫧"
+            tint={Candy.violetSoft}
             title="Draw over other apps"
             subtitle={
               overlayGranted
@@ -83,17 +95,17 @@ export default function SettingsScreen() {
         </Panel>
 
         <Panel>
-          <SectionTitle>Floating counter</SectionTitle>
+          <SectionTitle>🫧 Floating bubble</SectionTitle>
           <Row
             title="Show while scrolling"
-            subtitle="A small pill over the feed. Drag it anywhere; the position is remembered."
+            subtitle="Off = Silent mode: still counts in the background, no bubble. Tap the bubble for Pause/Hide; drag it to the ✕ to hide it for this sitting."
             value={settings.overlayEnabled}
             onToggle={(overlayEnabled) => update({ overlayEnabled })}
           />
         </Panel>
 
         <Panel>
-          <SectionTitle>Brain state thresholds</SectionTitle>
+          <SectionTitle>🧠 Brain state thresholds</SectionTitle>
           <Body muted>
             Healthy up to {settings.healthyMax}, fatigued up to {settings.fatiguedMax},
             fried above that. These are your numbers, not a diagnosis — move them until
@@ -103,7 +115,7 @@ export default function SettingsScreen() {
 
         {experimental.length > 0 ? (
           <Panel>
-            <SectionTitle>Detection accuracy</SectionTitle>
+            <SectionTitle>🎯 Detection accuracy</SectionTitle>
             <Body muted>
               {experimental.length === targetApps.length
                 ? 'None of the app profiles have been verified against a real device yet.'
@@ -121,7 +133,7 @@ export default function SettingsScreen() {
         ) : null}
 
         <Panel>
-          <SectionTitle>Your data</SectionTitle>
+          <SectionTitle>📦 Your data</SectionTitle>
           <Body muted>
             Everything lives in one database on this phone. Export gives you the whole
             thing as JSON through the share sheet, so you choose where it goes.
@@ -136,7 +148,7 @@ export default function SettingsScreen() {
         </Panel>
 
         <Panel>
-          <SectionTitle>Debug logging</SectionTitle>
+          <SectionTitle>🛠️ Debug logging</SectionTitle>
           <Row
             title="Log raw scroll events"
             subtitle="Writes accessibility event detail to logcat so a detection profile can be re-tuned. Off by default; it is noisy and costs battery."
@@ -150,5 +162,6 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: Spacing.lg, paddingBottom: Spacing.xxl },
+  // Clears the floating tab bar.
+  content: { padding: Spacing.lg, paddingBottom: 120 },
 });

@@ -25,7 +25,7 @@ export function TodayIcon({ active, color, size = 24 }: IconProps) {
       />
       <Path
         d="M12 7.5 V12 L15 14"
-        stroke={active ? '#0d0d0d' : color}
+        stroke={active ? '#FFFFFF' : color}
         strokeWidth="1.8"
         strokeLinecap="round"
         fill="none"
